@@ -25,6 +25,16 @@ log = structlog.get_logger("api")
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     s = get_settings()
+    # Built-in GST rule versions are seeded idempotently so a fresh database is always usable.
+    try:
+        from lekha.services.rulebook import seed_rules
+
+        async with system_session() as db:
+            n = await seed_rules(db)
+        if n:
+            log.info("rules.seeded", count=n)
+    except Exception:  # noqa: BLE001 - the API can still start; rule lookups fall back to the seed in code
+        log.exception("rules.seed_failed")
     worker = None
     if s.run_worker_in_api:
         from lekha.jobs.queue import Worker

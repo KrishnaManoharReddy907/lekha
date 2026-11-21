@@ -233,7 +233,8 @@ async def create_demo(db: AsyncSession, *, email: str | None = None, name: str =
             doc, _labels, _c = generate(party["gstin"], p, invs, rng, extra_records=rng.randint(0, 2),
                                         scenario_weights=[("clean", 1)], forced=forced)
             await import_gstr2b(db, firm_id=fid, client_id=client.id, filename=f"GSTR2B_{p}.json",
-                                data=json.dumps(doc).encode(), period=p, gstin=party["gstin"], user_id=user.id)
+                                data=json.dumps(doc).encode(), period=p, gstin=party["gstin"], user_id=user.id,
+                                auto_close=False)
             await db.flush()
             await run_reconciliation(db, fid, client.id, p, user.id)
             await db.flush()
@@ -267,6 +268,10 @@ async def create_demo(db: AsyncSession, *, email: str | None = None, name: str =
             row.document_id = d.id
     await db.flush()
     await analyse_firm(db, fid, today)
+    # Show the monthly close on the most recent period for the first client.
+    from lekha.services.close import start_close
+
+    await start_close(db, fid, clients[0][0].id, period_of(months[-1]), clients[0][1]["gstin"], "gstr2b", None)
     return user, firm
 
 

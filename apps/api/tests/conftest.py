@@ -40,9 +40,16 @@ def _prepare_database() -> bool:
             conn.execute(f'CREATE DATABASE "{name}"')
     except psycopg.OperationalError:
         return False
-    from lekha.cli import _migrate
+    from lekha.cli import _migrate, _seed_rules
 
     _migrate()
+    import asyncio
+
+    asyncio.run(_seed_rules())
+    from lekha.core import db as dbmod
+
+    dbmod._engine = None  # the seeding loop is closed; the test loop creates a fresh engine
+    dbmod._sessionmaker = None
     return True
 
 

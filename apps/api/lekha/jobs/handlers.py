@@ -48,6 +48,15 @@ async def close_run(db: AsyncSession, job: Job) -> dict | None:
     return await execute_close(db, job.firm_id, uuid.UUID(job.payload["run_id"]))
 
 
+@handler("close.auto")
+async def close_auto(db: AsyncSession, job: Job) -> dict | None:
+    from lekha.services.close import start_close
+
+    run = await start_close(db, job.firm_id, uuid.UUID(job.payload["client_id"]), job.payload["period"],
+                            job.payload.get("gstin"), "gstr2b", None)
+    return {"run_id": str(run.id)}
+
+
 @handler("graph.analyse")
 async def graph_analyse(db: AsyncSession, job: Job) -> dict | None:
     from lekha.services.intelligence import analyse_firm
