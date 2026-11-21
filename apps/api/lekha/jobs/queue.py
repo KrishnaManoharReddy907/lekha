@@ -66,15 +66,16 @@ async def enqueue(
     return job
 
 
-async def claim_one() -> Job | None:
+async def claim_one(include_delayed: bool = False) -> Job | None:
+    due = "" if include_delayed else "AND run_after <= now()"
     async with system_session() as db:
         row = (
             await db.execute(
                 text(
-                    """
+                    f"""
                     UPDATE jobs SET status='running', started_at=now(), attempts=attempts+1, updated_at=now()
                     WHERE id = (
-                      SELECT id FROM jobs WHERE status='queued' AND run_after <= now()
+                      SELECT id FROM jobs WHERE status='queued' {due}
                       ORDER BY run_after FOR UPDATE SKIP LOCKED LIMIT 1
                     ) RETURNING id
                     """
@@ -134,11 +135,11 @@ async def _on_dead(job: Job, error: str) -> None:
 DEAD_HOOKS: dict[str, Callable[[AsyncSession, Job, str], Awaitable[None]]] = {}
 
 
-async def run_until_empty(max_jobs: int = 1000) -> int:
-    """Process jobs synchronously until none are due (tests, CLI, demo seeding)."""
+async def run_until_empty(max_jobs: int = 1000, include_delayed: bool = True) -> int:
+    """Process jobs synchronously until none are left (tests, CLI, demo seeding). Delayed jobs run immediately."""
     n = 0
     while n < max_jobs:
-        job = await claim_one()
+        job = await claim_one(include_delayed)
         if not job:
             break
         await run_job(job)
