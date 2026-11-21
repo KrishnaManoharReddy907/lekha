@@ -255,7 +255,9 @@ export default function ReviewWorkstation() {
               onPick={editable && active ? (t) => setDraft((x) => ({ ...x, [active]: cleanPick(active, t) })) : undefined}
             />
           ) : (
-            <div className="grid h-full place-items-center text-ink-3">Entered manually — no document.</div>
+            <div className="grid h-full place-items-center px-6 text-center text-ink-3">
+              {inv.source === "import" ? "Imported from your purchase register — no document image." : inv.source === "demo" ? "Sample entry from the demo register — no document image." : "Entered manually — no document image."}
+            </div>
           )}
         </div>
 
@@ -317,6 +319,8 @@ export default function ReviewWorkstation() {
                       <div className="flex w-[74px] flex-col items-end gap-0.5">
                         {changed ? (
                           <Badge tone="info">Edited</Badge>
+                        ) : e && !e.value ? (
+                          <span className="text-[11px] text-ink-3">Not found</span>
                         ) : e ? (
                           <>
                             <Dot confidence={e.confidence} />

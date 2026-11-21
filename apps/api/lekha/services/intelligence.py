@@ -43,7 +43,8 @@ async def analyse_firm(db: AsyncSession, firm_id: uuid.UUID, today: date | None 
     names = {s.gstin: s.trade_name or s.legal_name or s.gstin for s in (await db.execute(select(Supplier))).scalars()}
     for sup, bad_clients in problem.items():
         others = buyers.get(sup, set()) - bad_clients
-        if others and (len(bad_clients) >= 1):
+        # Only material warnings: avoid alert fatigue from small, single-client issues.
+        if others and (len(bad_clients) >= 2 or amount[sup] >= Decimal(25000)):
             signals.append(GR.Signal(
                 "cross_client", min(1.0, 0.4 + 0.15 * len(bad_clients)),
                 f"{names.get(sup, sup)} has GST problems with {len(bad_clients)} client(s)",

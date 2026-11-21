@@ -159,7 +159,9 @@ async def review_queue(ctx: Ctx = Depends(get_ctx), client_id: uuid.UUID | None 
         stmt = stmt.where(Invoice.client_id == client_id)
     elif ctx.client_scope is not None:
         stmt = stmt.where(Invoice.client_id.in_(ctx.client_scope))
-    rs = (await ctx.db.execute(stmt.order_by(Invoice.confidence.asc().nullsfirst(), Invoice.created_at))).all()
+    # Invoices with a document image first (that is where review adds value), then lowest confidence.
+    rs = (await ctx.db.execute(stmt.order_by(Invoice.document_id.is_(None), Invoice.confidence.asc().nullsfirst(),
+                                             Invoice.created_at))).all()
     return [{"id": str(r[0]), "confidence": r[1]} for r in rs]
 
 

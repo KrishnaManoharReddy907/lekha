@@ -2,7 +2,14 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  Banknote,
   Building2,
+  GitCompareArrows,
+  ListChecks,
+  Network,
+  ShieldAlert,
+  Table2,
+  Truck,
   ChevronsUpDown,
   FileCheck2,
   FileText,
@@ -23,6 +30,7 @@ import { SessionProvider, useSession } from "@/lib/session";
 import { Logo } from "./logo";
 import { Spinner, cx } from "./ui";
 
+
 export interface NavItem {
   href: string;
   label: string;
@@ -36,6 +44,13 @@ export const NAV: NavItem[] = [
   { href: "/inbox", label: "Inbox", icon: Inbox, group: "work" },
   { href: "/review", label: "Review", icon: FileCheck2, group: "work" },
   { href: "/invoices", label: "Purchase register", icon: FileText, group: "work" },
+  { href: "/reconciliation", label: "Reconciliation", icon: GitCompareArrows, group: "gst" },
+  { href: "/ims", label: "IMS actions", icon: ListChecks, group: "gst" },
+  { href: "/risk", label: "Credit at risk", icon: ShieldAlert, group: "gst" },
+  { href: "/table4", label: "GSTR-3B Table 4", icon: Table2, group: "gst" },
+  { href: "/payables", label: "Payables", icon: Banknote, group: "gst" },
+  { href: "/suppliers", label: "Suppliers", icon: Truck, group: "insight" },
+  { href: "/intelligence", label: "Fraud signals", icon: Network, group: "insight" },
   { href: "/clients", label: "Clients", icon: Building2, group: "admin" },
   { href: "/settings", label: "Settings", icon: Settings, group: "admin" },
 ];

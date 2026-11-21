@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { AuthShell } from "@/components/auth-shell";
+import { DemoButton } from "@/components/demo-button";
 import { Button, Field, Input } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useAcceptMe } from "@/lib/session";
@@ -66,6 +67,8 @@ export default function LoginPage() {
       <Suspense>
         <LoginForm />
       </Suspense>
+      <div className="my-6 flex items-center gap-3 text-[12px] text-ink-3"><span className="h-px flex-1 bg-rule" />or<span className="h-px flex-1 bg-rule" /></div>
+      <DemoButton />
     </AuthShell>
   );
 }

@@ -64,10 +64,15 @@ def detect(invoices: list[Invoice], docs: dict[uuid.UUID, Document], suppliers: 
         if inv.supplier_gstin:
             by_supplier[inv.supplier_gstin].append(inv)
 
+    history_start = min((i.invoice_date for i in live if i.invoice_date), default=None)
     for inv in live:
         sup = suppliers.get(inv.supplier_gstin or "")
-        # 3. Brand-new supplier with an unusually large invoice.
-        if sup and sup.first_seen and inv.invoice_date and (inv.invoice_date - sup.first_seen).days <= 60:
+        # 3. Brand-new supplier with an unusually large invoice. "New" is relative to this client's history:
+        # when a year of past invoices is imported at once, every supplier would otherwise look new.
+        is_new = (sup and sup.first_seen and inv.invoice_date and history_start
+                  and (sup.first_seen - history_start).days >= 60
+                  and (inv.invoice_date - sup.first_seen).days <= 60)
+        if is_new:
             if inv.total >= 2 * LAKH and median_total and inv.total >= 3 * median_total:
                 flags[inv.id].append({"code": "NEW_SUPPLIER_LARGE", "severity": "medium",
                                       "message": f"First seen {sup.first_seen:%d %b %Y}: a new supplier with an "

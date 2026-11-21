@@ -117,8 +117,22 @@ async def create_demo(db: AsyncSession, *, email: str | None = None, name: str =
         all_invoices.append((row, t, sp, client))
         return row
 
+    local_pool: dict[str, list[dict[str, Any]]] = {}
+    for _client, party in clients:
+        local_pool[party["gstin"]] = []
+        for _ in range(7):
+            sp = {"party": make_party(rng, party["state"]), "behaviour": rng.choice(["prompt"] * 5 + ["late", "unreliable"]),
+                  "msme": rng.choice([None, None, "micro", "small"])}
+            g = sp["party"]["gstin"]
+            suppliers[g] = Supplier(firm_id=fid, gstin=g, legal_name=sp["party"]["name"], trade_name=sp["party"]["name"],
+                                    state_code=g[:2], email=sp["party"]["email"], msme_category=sp["msme"],
+                                    first_seen=months[0], language=rng.choice(["en", "hi", "te"]))
+            db.add(suppliers[g])
+            local_pool[party["gstin"]].append(sp)
+    await db.flush()
     for client, party in clients:
-        my_suppliers = rng.sample(pool, 14)
+        # Most purchases are local (CGST+SGST); some come from other states (IGST).
+        my_suppliers = local_pool[party["gstin"]] * 2 + rng.sample(pool, 9)
         for m in months:
             for _ in range(rng.randint(14, 22)):
                 sp = rng.choice(my_suppliers)
@@ -228,8 +242,8 @@ async def create_demo(db: AsyncSession, *, email: str | None = None, name: str =
     cur = today.replace(day=1)
     for client, party in clients:
         for _ in range(rng.randint(5, 8)):
-            add_invoice(client, party, rng.choice(pool), cur + timedelta(days=rng.randint(0, max(0, today.day - 1))),
-                        status="review")
+            add_invoice(client, party, rng.choice(pool + local_pool[party["gstin"]]),
+                        cur + timedelta(days=rng.randint(0, max(0, today.day - 1))), status="review")
     await db.flush()
     if with_documents:
         await _demo_documents(db, fid, clients[0][0], clients[0][1], pool, rng, today, user.id)

@@ -7,6 +7,9 @@ import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type R
 
 export const cx = clsx;
 
+/** Default to full width unless the caller sets its own width (avoids conflicting w-* utilities). */
+const width = (className?: string) => (className && /(^|\s)(w-|max-w-|flex-1)/.test(className) ? "" : "w-full");
+
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger";
 const BTN: Record<BtnVariant, string> = {
   primary: "bg-accent text-accent-ink hover:brightness-110 border border-transparent",
@@ -69,7 +72,8 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     <input
       ref={ref}
       className={cx(
-        "h-9 w-full rounded-md border bg-sheet px-3 text-sm text-ink placeholder:text-ink-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-soft",
+        "h-9 rounded-md border bg-sheet px-3 text-sm text-ink placeholder:text-ink-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-soft",
+        width(className),
         invalid ? "border-red" : "border-rule-2",
         className,
       )}
@@ -80,7 +84,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(function Select({ className, children, ...rest }, ref) {
   return (
-    <select ref={ref} className={cx("h-9 w-full rounded-md border border-rule-2 bg-sheet px-2.5 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft", className)} {...rest}>
+    <select ref={ref} className={cx("h-9 rounded-md border border-rule-2 bg-sheet px-2.5 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft", width(className), className)} {...rest}>
       {children}
     </select>
   );

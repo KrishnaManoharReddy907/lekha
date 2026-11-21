@@ -24,6 +24,7 @@
     "sonner": "^2.0.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^22.18.6",
     "@types/react": "^19.2.2",
