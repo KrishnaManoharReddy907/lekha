@@ -19,6 +19,7 @@ os.environ.update({
     "LEKHA_STORAGE_DIR": tempfile.mkdtemp(prefix="lekha-test-storage-"),
     "LEKHA_SECRET_KEY": "test-secret-key-test-secret-key-test-secret",
     "LEKHA_PUBLIC_API_URL": "http://test",
+    "LEKHA_OCR_PROCESSES": "0",
 })
 
 import pytest  # noqa: E402

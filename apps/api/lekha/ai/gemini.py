@@ -48,12 +48,15 @@ def _strip_unsupported(schema: Any) -> Any:
 
 
 async def complete_gemini(*, system: str, content: list[dict[str, Any]] | str, schema: dict[str, Any] | None,
-                          max_tokens: int) -> AIResult:
+                          max_tokens: int, fast: bool = False) -> AIResult:
     s = get_settings()
     key = s.gemini_api_key
     if not key:
         raise AIUnavailable("GEMINI_API_KEY is not set")
     models = [m.strip() for m in s.gemini_models.split(",") if m.strip()]
+    if fast:
+        # Text tasks (summaries, letters, copilot steps): fastest model with the largest free quota first.
+        models = sorted(models, key=lambda m: 0 if "lite" in m else 1)
     gen: dict[str, Any] = {"maxOutputTokens": max(1024, min(max_tokens, 32768))}
     if schema:
         gen["responseMimeType"] = "application/json"
@@ -64,7 +67,8 @@ async def complete_gemini(*, system: str, content: list[dict[str, Any]] | str, s
         "generationConfig": gen,
     }
     errors: list[str] = []
-    async with httpx.AsyncClient(timeout=180) as client:
+    # A free-tier model under heavy load can hang rather than fail; fail over quickly instead of waiting.
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
         for model in models:
             if _cooldown.get(model, 0) > time.time():
                 errors.append(f"{model}: cooling down after quota error")
@@ -73,6 +77,11 @@ async def complete_gemini(*, system: str, content: list[dict[str, Any]] | str, s
             try:
                 r = await client.post(f"{BASE}/models/{model}:generateContent", json=body,
                                       headers={"x-goog-api-key": key})
+            except httpx.TimeoutException:
+                _cooldown[model] = time.time() + 300
+                errors.append(f"{model}: timed out")
+                log.warning("gemini.timeout", model=model)
+                continue
             except httpx.HTTPError as exc:
                 errors.append(f"{model}: {exc}")
                 continue

@@ -165,7 +165,7 @@ Tools:
 At each step return JSON: either {{"action":"tool","tool":<name>,"args_json":"<JSON object as a string>","answer":null}}
 or {{"action":"answer","tool":null,"args_json":"{{}}","answer":<final answer>}}.
 Call at most {MAX_STEPS - 1} tools. Answer in {LANG.get(language, 'English')}, concisely, using Indian number format (₹1,23,456).
-Cite invoice numbers and supplier names from tool results. If the data does not answer the question, say so and suggest
+Write plain text (no markdown, no asterisks); use "• " for lists. Cite invoice numbers and supplier names from tool results. If the data does not answer the question, say so and suggest
 where in Lekha to look. GST terms: ITC = input tax credit, GSTR-2B = monthly supplier-reported ITC statement, IMS =
 accept/reject/pending of supplier records. Do not give legal advice beyond the GST rules reflected in the data."""
 
@@ -188,7 +188,7 @@ async def ask(db: AsyncSession, firm_id: uuid.UUID, client_id: uuid.UUID, user_i
         try:
             for _ in range(MAX_STEPS):
                 res = await complete(system=_system(client.name if client else "", language), content=transcript,
-                                     schema=STEP_SCHEMA, max_tokens=4000)
+                                     schema=STEP_SCHEMA, max_tokens=4000, fast=True)
                 tokens_in += res.input_tokens
                 tokens_out += res.output_tokens
                 step = res.data or {}

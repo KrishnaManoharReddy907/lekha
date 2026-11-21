@@ -12,6 +12,8 @@ const config: NextConfig = {
     ];
   },
   poweredByHeader: false,
+  // Some API calls legitimately take longer than the 30 s default (multi-step copilot answers, notice packs).
+  experimental: { proxyTimeout: 120_000 },
   async headers() {
     return [
       {

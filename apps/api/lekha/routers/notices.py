@@ -14,7 +14,8 @@ from lekha.core.errors import NotFound
 from lekha.core.storage import get_storage
 from lekha.models import ClientGstin, Notice, NoticePack
 from lekha.schemas.serialize import row, rows
-from lekha.services.notices import build_pack, form_options
+from lekha.jobs.queue import enqueue
+from lekha.services.notices import form_options
 
 router = APIRouter(prefix="/api", tags=["notices"])
 
@@ -50,8 +51,9 @@ async def create_notice(body: NoticeIn, ctx: Ctx = Depends(get_ctx)) -> dict:
     ctx.db.add(n)
     await ctx.db.flush()
     await audit(ctx.db, ctx.firm_id, "notice.created", "notice", n.id, actor_id=ctx.user_id, form=n.form)
-    result = await build_pack(ctx.db, ctx.firm_id, n.id)
-    return row(n, extra={"pack": result})
+    # The pack (analysis + AI-polished reply + ZIP) is built by the worker; the page polls until it appears.
+    await enqueue(ctx.db, "notice.pack", {"notice_id": str(n.id)}, firm_id=ctx.firm_id, max_attempts=2)
+    return row(n)
 
 
 @router.get("/notices")
@@ -81,7 +83,8 @@ async def rebuild(notice_id: uuid.UUID, ctx: Ctx = Depends(get_ctx)) -> dict:
     if not n:
         raise NotFound("Notice not found.")
     await ctx.client(n.client_id)
-    return await build_pack(ctx.db, ctx.firm_id, n.id)
+    await enqueue(ctx.db, "notice.pack", {"notice_id": str(n.id)}, firm_id=ctx.firm_id, max_attempts=2)
+    return {"queued": True}
 
 
 class PackPatch(BaseModel):

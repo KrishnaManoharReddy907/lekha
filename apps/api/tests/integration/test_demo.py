@@ -46,4 +46,8 @@ async def test_demo_endpoint_logs_visitor_in():
         r = await c.post("/api/demo/start")
         assert r.status_code == 200, r.text
         assert r.json()["firm"]["is_demo"] is True
+        # Sign-in is instant; data is built by the background worker.
+        assert (await c.get("/api/demo/status")).json()["status"] == "building"
+        await run_until_empty()
+        assert (await c.get("/api/demo/status")).json()["status"] == "ready"
         assert len((await c.get("/api/clients")).json()) == 3

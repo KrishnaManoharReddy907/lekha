@@ -59,6 +59,7 @@ async def test_notice_defense_pack(demo):
     r = await c.post("/api/notices", headers=h, json={"client_id": cid, "form": "DRC-01C", "reference": "ZD3611250012345",
                                                      "period_from": with2b[-3], "period_to": with2b[-1], "amount": "125000"})
     assert r.status_code == 200, r.text
+    await run_until_empty()
     n = (await c.get(f"/api/notices/{r.json()['id']}")).json()
     pack = n["packs"][0]
     assert "Reply to DRC-01C" in pack["reply_text"] and pack["analysis"]["totals"]["claimed"]
@@ -119,4 +120,7 @@ async def test_exports_and_dashboards(demo):
     assert len(firm["clients"]) == 3 and firm["calendar"]
     trend = (await c.get("/api/dashboard/client", params={"client_id": cid})).json()
     assert len(trend["months"]) == 12 and float(trend["working_capital_trapped"]) >= 0
+    # Each bar has one meaning: matched + not-yet-matched = the month's total ITC.
+    for m in trend["months"]:
+        assert abs(float(m["matched"]) + float(m["missing"]) - float(m["itc"])) < 0.01, m
     _ = date

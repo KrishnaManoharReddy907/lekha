@@ -123,9 +123,12 @@ def _reply_text(notice: Notice, client: Client, a: dict[str, Any]) -> str:
         f"input tax credit available in GSTR-2B and the credit availed in GSTR-3B, we, {client.name}, submit as "
         "follows:",
         "",
-        f"1. As per our reconciliation, ITC availed is {inr(Decimal(t['claimed']))} against "
-        f"{inr(Decimal(t['available_2b']))} available in GSTR-2B for the period, a difference of "
-        f"{inr(Decimal(t['difference']))}.",
+        (f"1. As per our reconciliation, ITC availed is {inr(Decimal(t['claimed']))} against "
+         f"{inr(Decimal(t['available_2b']))} available in GSTR-2B for the period, a difference of "
+         f"{inr(Decimal(t['difference']))}.") if Decimal(t["difference"]) > 0 else
+        (f"1. As per our reconciliation, ITC availed is {inr(Decimal(t['claimed']))}, which is "
+         f"{inr(-Decimal(t['difference']))} LOWER than the {inr(Decimal(t['available_2b']))} available in GSTR-2B for "
+         "the period. No ITC in excess of GSTR-2B has been availed."),
     ]
     n = 2
     cats: dict[str, Decimal] = {}
@@ -162,7 +165,7 @@ async def build_pack(db: AsyncSession, firm_id: uuid.UUID, notice_id: uuid.UUID)
                 system="You are an experienced Indian GST practitioner. Improve the clarity and formality of the draft "
                        "reply below WITHOUT adding facts, amounts, legal sections or claims that are not already in it. "
                        "Keep the numbered structure and every amount exactly as given. Return only the letter text.",
-                content=reply, max_tokens=4000)
+                content=reply, max_tokens=4000, fast=True)
             if res.text and all(x in res.text for x in (notice.client_gstin,)):
                 reply = res.text.strip()
         except (AIUnavailable, AIRefused):

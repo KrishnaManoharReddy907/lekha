@@ -81,8 +81,9 @@ async def complete(
     max_tokens: int = 16000,
     effort: str | None = None,
     model: str | None = None,
+    fast: bool = False,
 ) -> AIResult:
-    """One AI call. With `schema`, the response is guaranteed-valid JSON. Content uses Claude-style blocks
+    """One AI call. `fast=True` for text tasks where speed matters more than peak accuracy. With `schema`, the response is guaranteed-valid JSON. Content uses Claude-style blocks
     ({"type": "image", "source": {...}} / {"type": "text", "text": ...}); providers translate as needed."""
     p = provider()
     if p is None:
@@ -90,7 +91,7 @@ async def complete(
     if p == "gemini":
         from lekha.ai.gemini import complete_gemini
 
-        return await complete_gemini(system=system, content=content, schema=schema, max_tokens=max_tokens)
+        return await complete_gemini(system=system, content=content, schema=schema, max_tokens=max_tokens, fast=fast)
     return await _complete_claude(system=system, content=content, schema=schema, max_tokens=max_tokens,
                                   effort=effort, model=model)
 

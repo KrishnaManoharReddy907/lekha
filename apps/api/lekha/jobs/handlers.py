@@ -57,6 +57,21 @@ async def close_auto(db: AsyncSession, job: Job) -> dict | None:
     return {"run_id": str(run.id)}
 
 
+@handler("demo.populate")
+async def demo_populate(db: AsyncSession, job: Job) -> dict | None:
+    from lekha.core.db import set_tenant
+    from lekha.models import Firm, User
+    from lekha.services.demo import populate_demo
+
+    await set_tenant(db, None, bypass=True)
+    user = await db.get(User, uuid.UUID(job.payload["user_id"]))
+    firm = await db.get(Firm, job.firm_id)
+    if (firm.settings or {}).get("demo_status") == "ready":
+        return {"skipped": "already ready"}
+    await populate_demo(db, user, firm)
+    return {"ok": True}
+
+
 @handler("graph.analyse")
 async def graph_analyse(db: AsyncSession, job: Job) -> dict | None:
     from lekha.services.intelligence import analyse_firm

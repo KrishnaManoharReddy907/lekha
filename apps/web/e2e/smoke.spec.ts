@@ -21,12 +21,13 @@ async function settle(page: Page) {
 
 test("visitor demo: every screen renders without errors", async ({ page }) => {
   const errors = watchErrors(page);
-  await page.goto("/login");
-  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /From invoice photo to protected tax credit/ })).toBeVisible();
+  await page.screenshot({ path: `${SHOTS}/00-landing.png`, fullPage: true });
   await page.getByRole("button", { name: /Try the live demo/ }).click();
   await page.waitForURL("**/dashboard", { timeout: 180_000 });
   await settle(page);
-  await expect(page.getByText("Approved ITC")).toBeVisible();
+  await expect(page.getByText("Firm overview")).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/01-dashboard.png`, fullPage: true });
 
   const pages: [string, string, RegExp][] = [
@@ -41,6 +42,9 @@ test("visitor demo: every screen renders without errors", async ({ page }) => {
     ["/intelligence", "10-intelligence", /Circular trading/],
     ["/clients", "11-clients", /Clients/],
     ["/settings", "12-settings", /Team/],
+    ["/close", "16-close", /Monthly close/],
+    ["/rules", "17-rules", /GST_RATE_SLABS/],
+    ["/notices", "18-notices", /Notices/],
   ];
   for (const [path, name, marker] of pages) {
     await page.goto(path);
@@ -70,6 +74,23 @@ test("visitor demo: every screen renders without errors", async ({ page }) => {
   await settle(page);
   await page.locator("#f-number").click();
   await page.screenshot({ path: `${SHOTS}/15-review.png`, fullPage: false });
+
+  // Notice: record a DRC-01C and get the defence pack.
+  await page.goto("/notices");
+  await settle(page);
+  await page.getByRole("button", { name: "Record a notice" }).click();
+  await page.getByLabel(/Difference amount/).fill("125000");
+  await page.getByRole("button", { name: "Build defence pack" }).click();
+  await expect(page.getByText(/Defence pack v1/)).toBeVisible({ timeout: 90_000 });
+  await page.screenshot({ path: `${SHOTS}/19-notice-pack.png`, fullPage: true });
+
+  // Copilot answers a question from the data (live AI if a key is configured, offline rules otherwise).
+  await page.goto("/dashboard");
+  await settle(page);
+  await page.getByRole("button", { name: "Ask Lekha" }).click();
+  await page.getByRole("button", { name: "What deadlines are coming up?" }).click();
+  await expect(page.getByText(/Looked up:/)).toBeVisible({ timeout: 120_000 });
+  await page.screenshot({ path: `${SHOTS}/21-copilot.png`, fullPage: false });
 
   expect(errors, errors.join("\n")).toEqual([]);
 });

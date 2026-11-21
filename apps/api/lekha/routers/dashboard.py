@@ -84,23 +84,28 @@ async def client_trend(client_id: uuid.UUID, ctx: Ctx = Depends(get_ctx)) -> dic
     today = date.today()
     months = [add_months(today.replace(day=1), -k) for k in range(11, -1, -1)]
     periods = [period_of(m) for m in months]
-    itc = dict((await ctx.db.execute(select(Invoice.period, func.sum(_itc())).where(
-        Invoice.client_id == client_id, Invoice.status.in_(("approved", "review")), Invoice.period.in_(periods))
-        .group_by(Invoice.period))).all())
-    matched = dict((await ctx.db.execute(select(Match.period, func.sum(Match.itc_books)).where(
-        Match.client_id == client_id, Match.status == "matched", Match.period.in_(periods)).group_by(Match.period))).all())
-    missing = defaultdict(lambda: ZERO)
-    for p, amt in (await ctx.db.execute(select(Invoice.period, _itc()).join(Match, Match.invoice_id == Invoice.id).where(
-            Invoice.client_id == client_id, Match.status == "missing_in_2b"))).all():
-        if p in periods:
-            missing[p] += amt
+    # One meaning per bar: the ITC of invoices dated in that month, split by whether a GSTR-2B record
+    # (of any period) has been matched to the invoice yet.
+    matched_ids = set((await ctx.db.execute(select(Match.invoice_id).where(
+        Match.client_id == client_id, Match.status.in_(("matched", "mismatch")), Match.invoice_id.is_not(None))))
+        .scalars())
+    matched: dict[str, Decimal] = defaultdict(lambda: ZERO)
+    missing: dict[str, Decimal] = defaultdict(lambda: ZERO)
+    itc: dict[str, Decimal] = defaultdict(lambda: ZERO)
+    for inv_id, p, amount in (await ctx.db.execute(select(Invoice.id, Invoice.period, _itc()).where(
+            Invoice.client_id == client_id, Invoice.status.in_(("approved", "review")), Invoice.period.in_(periods)))).all():
+        itc[p] += amount
+        if inv_id in matched_ids:
+            matched[p] += amount
+        else:
+            missing[p] += amount
     trapped = (await ctx.db.execute(select(func.sum(RiskItem.amount)).where(
         RiskItem.client_id == client_id, RiskItem.status == "open", RiskItem.kind.in_(ITC_KINDS)))).scalar() or ZERO
     soon = list((await ctx.db.execute(select(RiskItem).where(
         RiskItem.client_id == client_id, RiskItem.status == "open", RiskItem.due_date.is_not(None),
         RiskItem.due_date <= today + timedelta(days=30)).order_by(RiskItem.due_date).limit(6))).scalars())
-    return {"months": [{"period": p, "label": period_to_date(p).strftime("%b %y"), "itc": str(itc.get(p) or ZERO),
-                        "matched": str(matched.get(p) or ZERO), "missing": str(missing[p])} for p in periods],
+    return {"months": [{"period": p, "label": period_to_date(p).strftime("%b %y"), "itc": str(itc[p]),
+                        "matched": str(matched[p]), "missing": str(missing[p])} for p in periods],
             "working_capital_trapped": str(trapped),
             "deadlines": [{"id": str(r.id), "title": r.title, "amount": str(r.amount), "due": r.due_date.isoformat(),
                            "kind": r.kind, "invoice_id": str(r.invoice_id) if r.invoice_id else None} for r in soon]}

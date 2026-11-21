@@ -42,6 +42,8 @@ class Settings(BaseSettings):
 
     run_worker_in_api: bool = Field(True, alias="LEKHA_WORKER_IN_API")
     worker_concurrency: int = Field(3, alias="LEKHA_WORKER_CONCURRENCY")
+    # Separate processes for OCR so it never blocks web requests (0 = inline thread, used in tests).
+    ocr_processes: int = Field(2, alias="LEKHA_OCR_PROCESSES")
     max_upload_mb: int = Field(20, alias="LEKHA_MAX_UPLOAD_MB")
     session_days: int = Field(14, alias="LEKHA_SESSION_DAYS")
     auto_approve_confidence: float = Field(0.97, alias="LEKHA_AUTO_APPROVE")

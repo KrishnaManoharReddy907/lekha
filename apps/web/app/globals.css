@@ -25,6 +25,9 @@
   --ok: #1b7a46;
   --ok-soft: #e1f3e8;
   --shadow: 0 1px 2px rgb(16 32 28 / 0.06), 0 4px 16px rgb(16 32 28 / 0.05);
+  /* Chart series (validated for CVD separation and contrast; see dataviz validator) */
+  --series-1: #1baf7a;
+  --series-2: #eb6834;
   color-scheme: light;
 }
 
@@ -50,6 +53,8 @@
     --ok: #6fd39b;
     --ok-soft: #12301f;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    --series-1: #199e70;
+    --series-2: #d95926;
     color-scheme: dark;
   }
 }
@@ -74,6 +79,8 @@
   --ok: #6fd39b;
   --ok-soft: #12301f;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --series-1: #199e70;
+  --series-2: #d95926;
   color-scheme: dark;
 }
 

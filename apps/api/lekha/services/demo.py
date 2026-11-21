@@ -48,19 +48,32 @@ def _months_back(today: date, n: int) -> list[date]:
     return [add_months(first, -k) for k in range(n, 0, -1)]
 
 
-async def create_demo(db: AsyncSession, *, email: str | None = None, name: str = "Demo User",
-                      seed: int | None = None, today: date | None = None, with_documents: bool = True
-                      ) -> tuple[User, Firm]:
-    """Must run inside a bypass/system session. Returns the demo user and firm."""
-    today = today or date.today()
-    rng = random.Random(seed if seed is not None else random.randint(1, 10**9))
+async def create_demo_shell(db: AsyncSession, *, email: str | None = None, name: str = "Demo User") -> tuple[User, Firm]:
+    """Instant part: the visitor's user, firm and membership. Data is filled in by `populate_demo`."""
     await set_tenant(db, None, bypass=True)
     user = User(email=email or f"demo-{uuid.uuid4().hex[:10]}@demo.lekha.app", name=name,
                 password_hash=hash_password(new_token(16)))
-    firm = Firm(name="Rao & Associates (demo)", kind="ca_firm", is_demo=True)
+    firm = Firm(name="Rao & Associates (demo)", kind="ca_firm", is_demo=True, settings={"demo_status": "building"})
     db.add_all([user, firm])
     await db.flush()
     db.add(Membership(firm_id=firm.id, user_id=user.id, role="owner"))
+    await db.flush()
+    return user, firm
+
+
+async def create_demo(db: AsyncSession, *, email: str | None = None, name: str = "Demo User",
+                      seed: int | None = None, today: date | None = None, with_documents: bool = True
+                      ) -> tuple[User, Firm]:
+    """Shell + data in one go (CLI, tests). Must run inside a bypass/system session."""
+    user, firm = await create_demo_shell(db, email=email, name=name)
+    await populate_demo(db, user, firm, seed=seed, today=today, with_documents=with_documents)
+    return user, firm
+
+
+async def populate_demo(db: AsyncSession, user: User, firm: Firm, *, seed: int | None = None,
+                        today: date | None = None, with_documents: bool = True) -> None:
+    today = today or date.today()
+    rng = random.Random(seed if seed is not None else random.randint(1, 10**9))
     await set_tenant(db, firm.id)
     fid = firm.id
 
@@ -272,7 +285,9 @@ async def create_demo(db: AsyncSession, *, email: str | None = None, name: str =
     from lekha.services.close import start_close
 
     await start_close(db, fid, clients[0][0].id, period_of(months[-1]), clients[0][1]["gstin"], "gstr2b", None)
-    return user, firm
+    await set_tenant(db, None, bypass=True)
+    firm.settings = {**(firm.settings or {}), "demo_status": "ready"}
+    await set_tenant(db, fid)
 
 
 async def _demo_documents(db: AsyncSession, fid: uuid.UUID, client: Client, party: dict, pool: list[dict[str, Any]],

@@ -242,7 +242,7 @@ async def _summary(db: AsyncSession, run: CloseRun) -> dict[str, Any]:
                        "the facts given. Plain English, no markdown headers, at most 6 bullet points starting with '• '. "
                        "Mention rupee amounts in Indian format (₹1,23,456). End with the one most important action.",
                 content=f"Client: {client.name if client else ''}\nPeriod: {run.period}\nFacts (JSON):\n"
-                        f"{json.dumps(jsonable(facts))[:12000]}", max_tokens=2000)
+                        f"{json.dumps(jsonable(facts))[:12000]}", max_tokens=2000, fast=True)
             text = res.text.strip()
         except (AIUnavailable, AIRefused):
             text = None

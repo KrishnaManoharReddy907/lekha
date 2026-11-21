@@ -374,10 +374,35 @@ def _union(boxes: list[list[float]]) -> list[float]:
     return [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
 
 
+_POOL = None
+
+
+def _pool():
+    """Process pool for CPU-heavy OCR/QR work.
+
+    OCR holds the GIL for long stretches; running it in threads inside the web process starves the
+    event loop and every HTTP request slows down. Separate processes keep the API responsive.
+    """
+    global _POOL
+    if _POOL is None:
+        import multiprocessing as mp
+        from concurrent.futures import ProcessPoolExecutor
+
+        from lekha.core.config import get_settings
+
+        _POOL = ProcessPoolExecutor(max_workers=max(1, get_settings().ocr_processes),
+                                    mp_context=mp.get_context("spawn"))
+    return _POOL
+
+
 async def _run_cpu(fn, *args):
     import asyncio
 
-    return await asyncio.to_thread(fn, *args)
+    from lekha.core.config import get_settings
+
+    if get_settings().ocr_processes <= 0:  # tests / tiny hosts: run inline in a thread
+        return await asyncio.to_thread(fn, *args)
+    return await asyncio.get_running_loop().run_in_executor(_pool(), fn, *args)
 
 
 async def mark_failed(db: AsyncSession, document_id: uuid.UUID, error: str) -> None:

@@ -2,6 +2,9 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  BookOpenCheck,
+  CalendarCheck2,
+  Gavel,
   Banknote,
   Building2,
   GitCompareArrows,
@@ -27,6 +30,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { ClientProvider, useClients } from "@/lib/clients";
 import { SessionProvider, useSession } from "@/lib/session";
+import { Copilot } from "./copilot";
 import { Logo } from "./logo";
 import { Spinner, cx } from "./ui";
 
@@ -44,14 +48,17 @@ export const NAV: NavItem[] = [
   { href: "/inbox", label: "Inbox", icon: Inbox, group: "work" },
   { href: "/review", label: "Review", icon: FileCheck2, group: "work" },
   { href: "/invoices", label: "Purchase register", icon: FileText, group: "work" },
+  { href: "/close", label: "Monthly close", icon: CalendarCheck2, group: "work" },
   { href: "/reconciliation", label: "Reconciliation", icon: GitCompareArrows, group: "gst" },
   { href: "/ims", label: "IMS actions", icon: ListChecks, group: "gst" },
   { href: "/risk", label: "Credit at risk", icon: ShieldAlert, group: "gst" },
   { href: "/table4", label: "GSTR-3B Table 4", icon: Table2, group: "gst" },
   { href: "/payables", label: "Payables", icon: Banknote, group: "gst" },
+  { href: "/notices", label: "Notices", icon: Gavel, group: "gst" },
   { href: "/suppliers", label: "Suppliers", icon: Truck, group: "insight" },
   { href: "/intelligence", label: "Fraud signals", icon: Network, group: "insight" },
   { href: "/clients", label: "Clients", icon: Building2, group: "admin" },
+  { href: "/rules", label: "GST rules", icon: BookOpenCheck, group: "admin" },
   { href: "/settings", label: "Settings", icon: Settings, group: "admin" },
 ];
 
@@ -144,7 +151,8 @@ function Frame({ children }: { children: ReactNode }) {
           </button>
           <Logo />
         </header>
-        <main className="mx-auto w-full max-w-[1400px] px-[max(16px,env(safe-area-inset-left))] py-6 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1400px] px-[max(16px,env(safe-area-inset-left))] pt-6 pb-24 lg:px-8">{children}</main>
+        <Copilot />
       </div>
     </div>
   );
