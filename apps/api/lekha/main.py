@@ -33,7 +33,7 @@ async def lifespan(_app: FastAPI):
             n = await seed_rules(db)
         if n:
             log.info("rules.seeded", count=n)
-    except Exception:  # noqa: BLE001 - the API can still start; rule lookups fall back to the seed in code
+    except Exception:
         log.exception("rules.seed_failed")
     worker = None
     if s.run_worker_in_api:

@@ -1,11 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileUp, Search } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { Badge, ConfidenceMeter, Empty, Input, PageHeader, Select, StatusBadge, Table, Td, Th } from "@/components/ui";
-import { api } from "@/lib/api";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
+import { Badge, Button, ConfidenceMeter, Empty, Input, PageHeader, Select, StatusBadge, Table, Td, Th } from "@/components/ui";
+import { api, errorMessage } from "@/lib/api";
+import { useSession } from "@/lib/session";
 import { useClients } from "@/lib/clients";
 import { date, inr, period } from "@/lib/format";
 import type { Invoice, Page } from "@/lib/types";
@@ -22,6 +24,22 @@ export default function InvoicesPage() {
     queryFn: () => api<Page<Invoice>>("/api/invoices", { params: { client_id: current?.id, status, q, limit, offset } }),
     placeholderData: (prev) => prev,
   });
+  const { can } = useSession();
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const importReg = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api<{ created: number; skipped_duplicates: number; problems: string[] }>(`/api/clients/${current!.id}/register-import`, { form });
+    },
+    onSuccess: (r) => {
+      toast.success(`Imported ${r.created} invoice(s)${r.skipped_duplicates ? `, skipped ${r.skipped_duplicates} already present` : ""}`);
+      r.problems.slice(0, 3).forEach((p) => toast.warning(p));
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
   const items = list.data?.items ?? [];
   const totalItc = items.filter((i) => i.status === "approved").reduce((s, i) => s + Number(i.itc), 0);
 
@@ -30,6 +48,14 @@ export default function InvoicesPage() {
       <PageHeader
         title="Purchase register"
         sub={current ? <>Every purchase invoice for <span className="font-medium text-ink">{current.name}</span>, with its tax credit.</> : undefined}
+        actions={can("write") && current && (
+          <>
+            <Button icon={<FileUp className="size-4" />} loading={importReg.isPending} onClick={() => fileRef.current?.click()} title="CSV or Excel with columns: Supplier GSTIN, Invoice No, Invoice Date, Taxable Value, IGST, CGST, SGST, Invoice Value">
+              Import register
+            </Button>
+            <input ref={fileRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importReg.mutate(f); e.target.value = ""; }} />
+          </>
+        )}
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative w-full max-w-xs">

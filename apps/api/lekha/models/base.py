@@ -34,7 +34,7 @@ class IdMixin:
 
 class TenantMixin(IdMixin):
     @declared_attr
-    def firm_id(cls) -> Mapped[uuid.UUID]:  # noqa: N805
+    def firm_id(cls) -> Mapped[uuid.UUID]:
         return mapped_column(UUID(as_uuid=True), ForeignKey("firms.id", ondelete="CASCADE"), index=True)
 
     def __init_subclass__(cls, **kw):

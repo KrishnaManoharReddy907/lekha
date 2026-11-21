@@ -100,7 +100,7 @@ async def execute_close(db: AsyncSession, firm_id: uuid.UUID, run_id: uuid.UUID)
         except AppError as e:
             step.status, step.error = "failed", e.message
             blocked = code in ("reconcile",)
-        except Exception as e:  # noqa: BLE001 - recorded on the step
+        except Exception as e:
             log.exception("close.step_failed", step=code)
             step.status, step.error = "failed", f"{type(e).__name__}: {e}"
             blocked = code in ("reconcile",)

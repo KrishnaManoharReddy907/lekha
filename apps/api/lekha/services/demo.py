@@ -208,9 +208,9 @@ async def populate_demo(db: AsyncSession, user: User, firm: Firm, *, seed: int |
     await db.flush()
 
     # GSTR-2B per client per month with late reporting by behaviour and realistic discrepancies.
-    from lekha.services.reconcile import import_gstr2b, run_reconciliation
-
     import json
+
+    from lekha.services.reconcile import import_gstr2b, run_reconciliation
 
     for client, party in clients:
         mine = [(r, t, sp) for r, t, sp, c in all_invoices if c.id == client.id]
@@ -266,10 +266,9 @@ async def populate_demo(db: AsyncSession, user: User, firm: Firm, *, seed: int |
 
     for client, _p in clients:
         await refresh_client(db, fid, client.id)
-    from lekha.services.intelligence import analyse_firm
-
     # Template-reuse needs layout hashes: give the factory suppliers' invoices identical ones.
     from lekha.models import Document
+    from lekha.services.intelligence import analyse_firm
 
     for row, _t, sp, client in all_invoices:
         if sp in factory:

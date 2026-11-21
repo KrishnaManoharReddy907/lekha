@@ -27,10 +27,7 @@ def _parts(content: list[dict[str, Any]] | str) -> list[dict[str, Any]]:
         return [{"text": content}]
     out: list[dict[str, Any]] = []
     for block in content:
-        if block.get("type") == "image" and block.get("source", {}).get("type") == "base64":
-            src = block["source"]
-            out.append({"inlineData": {"mimeType": src["media_type"], "data": src["data"]}})
-        elif block.get("type") == "document" and block.get("source", {}).get("type") == "base64":
+        if (block.get("type") == "image" and block.get("source", {}).get("type") == "base64") or (block.get("type") == "document" and block.get("source", {}).get("type") == "base64"):
             src = block["source"]
             out.append({"inlineData": {"mimeType": src["media_type"], "data": src["data"]}})
         elif block.get("type") == "text":

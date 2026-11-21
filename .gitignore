@@ -16,3 +16,4 @@ test-results/
 sample-bills/
 e2e-shots/
 e2e-results/
+deploy.env

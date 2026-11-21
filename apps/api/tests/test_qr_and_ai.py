@@ -19,7 +19,7 @@ def test_qr_fills_gaps():
 
 def test_qr_corrects_misread_gstin_even_when_checksum_passes():
     # Real case from a degraded photo: the misread GSTIN happens to have a valid checksum.
-    out, src, corr = reconcile_with_qr({"supplier_gstin": "33FBLCG2611D1ZY"}, QR, "nothing useful")
+    out, _src, corr = reconcile_with_qr({"supplier_gstin": "33FBLCG2611D1ZY"}, QR, "nothing useful")
     assert out["supplier_gstin"] == QR["SellerGstin"] and corr[0]["why"] == "near-identical misread"
 
 

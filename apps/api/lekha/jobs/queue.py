@@ -105,7 +105,7 @@ async def run_job(job: Job) -> None:
                 {"id": job.id, "r": _json(result or {})},
             )
         log.info("job.done", kind=job.kind, id=str(job.id), ms=int((datetime.now(UTC) - started).total_seconds() * 1000))
-    except Exception as exc:  # noqa: BLE001 - every failure must be recorded
+    except Exception as exc:
         err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc(limit=8)}"
         dead = job.attempts >= job.max_attempts
         backoff = min(600, 5 * 2 ** (job.attempts - 1))
@@ -128,7 +128,7 @@ async def _on_dead(job: Job, error: str) -> None:
         try:
             async with tenant_session(job.firm_id, bypass=job.firm_id is None) as db:
                 await hook(db, job, error)
-        except Exception:  # noqa: BLE001
+        except Exception:
             log.exception("job.dead_hook_failed", kind=job.kind)
 
 
@@ -158,7 +158,7 @@ class Worker:
         while not self._stop.is_set():
             try:
                 job = await claim_one()
-            except Exception:  # noqa: BLE001 - DB hiccup; keep the worker alive
+            except Exception:
                 log.exception("worker.claim_failed")
                 await asyncio.sleep(3)
                 continue

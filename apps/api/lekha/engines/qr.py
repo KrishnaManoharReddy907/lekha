@@ -10,9 +10,9 @@ the IRP public key is configured (LEKHA_IRP_PUBLIC_KEY); otherwise the payload i
 from __future__ import annotations
 
 import base64
-import re
 import json
 import os
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -39,7 +39,7 @@ def decode_images(images: list) -> list[QrResult]:
     for img in images:
         try:
             results = zxingcpp.read_barcodes(img)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
         for r in results:
             if r.text:
@@ -55,7 +55,7 @@ def classify(text: str) -> QrResult:
     t = text.strip()
     if t.count(".") == 2 and len(t) > 100:
         try:
-            header_b64, payload_b64, _sig = t.split(".")
+            _header_b64, payload_b64, _sig = t.split(".")
             payload = json.loads(_b64url(payload_b64))
             data = payload.get("data")
             if isinstance(data, str):
@@ -80,7 +80,7 @@ def _verify(token: str) -> bool | None:
 
         jwt.decode(token, key, algorithms=["RS256"], options={"verify_aud": False})
         return True
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
 
 

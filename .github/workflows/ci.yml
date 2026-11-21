@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: API — lint and tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lekha
+          POSTGRES_PASSWORD: lekha
+          POSTGRES_DB: lekha
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U lekha" --health-interval 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.9"
+      - run: sudo apt-get update && sudo apt-get install -y libgl1
+      - run: uv sync --frozen
+      - run: uv run ruff check lekha tests
+      - run: uv run pytest -q
+        env:
+          LEKHA_TEST_DATABASE_URL: postgresql+asyncpg://lekha:lekha@localhost:5433/lekha_test
+
+  web:
+    name: Web — typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx next build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

@@ -1,0 +1,9 @@
+.venv
+.storage
+bench-data
+.env
+.pytest_cache
+.ruff_cache
+.mypy_cache
+__pycache__
+tests

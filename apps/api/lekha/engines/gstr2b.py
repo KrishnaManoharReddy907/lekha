@@ -225,7 +225,7 @@ def parse_excel(data: bytes) -> Statement:
 
     try:
         wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise Gstr2bError("Could not open the Excel file.") from exc
     records: list[Record] = []
     for ws in wb.worksheets:
@@ -248,16 +248,16 @@ def parse_excel(data: bytes) -> Statement:
         if header_idx is None:
             continue
         for r in rows[header_idx + 1:]:
-            def val(key: str) -> Any:
-                i = mapping.get(key)
-                return r[i] if i is not None and i < len(r) else None
+            def val(key: str, row: tuple = r, cols: dict[str, int] = mapping) -> Any:
+                i = cols.get(key)
+                return row[i] if i is not None and i < len(row) else None
 
             g = norm_gstin(str(val("supplier_gstin") or ""))
             if len(g) != 15:
                 continue
             tx, ig, cg, sg, cs = d(val("taxable_value")), d(val("igst")), d(val("cgst")), d(val("sgst")), d(val("cess"))
             dtype = str(val("doc_type") or "").lower()
-            doc_type = "credit_note" if "credit" in dtype or section == "cdnr" and "debit" not in dtype else (
+            doc_type = "credit_note" if "credit" in dtype or (section == "cdnr" and "debit" not in dtype) else (
                 "debit_note" if "debit" in dtype else "invoice")
             pos_raw = str(val("place_of_supply") or "")
             from lekha.engines.states import parse_place_of_supply
@@ -284,7 +284,7 @@ def _period_text(v: Any) -> str | None:
     s = str(v).strip()
     m = re.match(r"([A-Za-z]{3})[- ']?(\d{2,4})", s)
     if m:
-        months = "jan feb mar apr may jun jul aug sep oct nov dec".split()
+        months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
         mon = months.index(m.group(1).lower()[:3]) + 1
         yr = int(m.group(2)) + (2000 if len(m.group(2)) == 2 else 0)
         return f"{mon:02d}{yr}"

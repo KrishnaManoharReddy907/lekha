@@ -84,7 +84,7 @@ def detect(invoices: list[Invoice], docs: dict[uuid.UUID, Document], suppliers: 
                                              "confirm goods/services were actually received."})
 
     # 5. Low invoice-sequence velocity: a supplier issuing very few invoices overall but large ones to you.
-    for gstin, invs in by_supplier.items():
+    for invs in by_supplier.values():
         numbered = [(i, _seq(i.number)) for i in invs if i.invoice_date and _seq(i.number) is not None]
         if len(numbered) < 2:
             continue

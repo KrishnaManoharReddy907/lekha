@@ -44,10 +44,7 @@ class LocalStorage:
             p.unlink()
 
     def signed_url(self, key: str, expires_in: int = 900) -> str:
-        s = get_settings()
-        exp = int(time.time()) + expires_in
-        sig = sign_file_key(key, exp)
-        return f"{s.public_api_url}/api/files/{key}?exp={exp}&sig={sig}"
+        return _api_signed_url(key, expires_in)
 
 
 class S3Storage:
@@ -75,9 +72,14 @@ class S3Storage:
         await asyncio.to_thread(self.client.delete_object, Bucket=self.bucket, Key=key)
 
     def signed_url(self, key: str, expires_in: int = 900) -> str:
-        return self.client.generate_presigned_url(
-            "get_object", Params={"Bucket": self.bucket, "Key": key}, ExpiresIn=expires_in
-        )
+        # Served through Lekha's own signed route (same as local storage): works with any S3-compatible
+        # provider and keeps access control and expiry in one place.
+        return _api_signed_url(key, expires_in)
+
+
+def _api_signed_url(key: str, expires_in: int) -> str:
+    exp = int(time.time()) + expires_in
+    return f"{get_settings().public_api_url}/api/files/{key}?exp={exp}&sig={sign_file_key(key, exp)}"
 
 
 def sign_file_key(key: str, exp: int) -> str:

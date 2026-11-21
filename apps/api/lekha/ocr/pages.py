@@ -48,7 +48,7 @@ def _register_heif() -> None:
         import pillow_heif
 
         pillow_heif.register_heif_opener()
-    except Exception:  # noqa: BLE001 - HEIC support is optional
+    except Exception:
         pass
 
 

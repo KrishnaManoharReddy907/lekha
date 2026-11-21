@@ -122,7 +122,7 @@ def normalise_number(number: str | None) -> str:
     tokens = [t for t in re.split(r"[^0-9A-Z]+", s) if t]
     out = []
     for t in tokens:
-        if t == "FY" or _FY_TOKEN.match(t) and _looks_like_fy(t):
+        if t == "FY" or (_FY_TOKEN.match(t) and _looks_like_fy(t)):
             continue
         out.append(re.sub(r"\d+", lambda m: str(int(m.group(0))), t))
     return "".join(out)

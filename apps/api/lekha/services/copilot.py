@@ -11,9 +11,10 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession

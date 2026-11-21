@@ -21,7 +21,7 @@ import lekha.jobs.handlers  # noqa: E402,F401
 async def test_demo_workspace_has_every_feature():
     t0 = time.perf_counter()
     async with system_session() as db:
-        user, firm = await create_demo(db, seed=7, today=date(2026, 11, 21))
+        _user, firm = await create_demo(db, seed=7, today=date(2026, 11, 21))
     elapsed = time.perf_counter() - t0
     assert elapsed < 90, f"demo took {elapsed:.0f}s"
     await run_until_empty()

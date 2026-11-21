@@ -67,7 +67,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
-ignore = ["E501", "RUF001", "RUF002", "RUF003", "B008"]
+# SIM102/105/108: nested ifs, try/except/pass and if/else blocks are kept where they read more clearly.
+# RUF012: SQLAlchemy's type_annotation_map is a documented mutable class attribute.
+ignore = ["E501", "RUF001", "RUF002", "RUF003", "B008", "SIM102", "SIM105", "SIM108", "RUF012"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

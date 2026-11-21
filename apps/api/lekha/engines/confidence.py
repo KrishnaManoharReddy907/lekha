@@ -97,7 +97,7 @@ def grounded(field: str, value: str | None, token_texts: list[str]) -> float:
     if field == "date":
         # Dates are normalised (YYYY-MM-DD) and rarely appear verbatim; accept day+month digits present.
         digits = re.sub(r"\D", "", joined)
-        y, m, d = value.split("-") if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) else ("", "", "")
+        _y, m, d = value.split("-") if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) else ("", "", "")
         return 1.0 if d and (d.lstrip("0") in digits and m.lstrip("0") in digits) else 0.3
     hay = _canon(field, joined) if field not in ("supplier_name", "buyer_name") else joined.lower().replace(" ", "")
     if field in ("taxable_value", "igst", "cgst", "sgst", "cess", "total", "round_off"):

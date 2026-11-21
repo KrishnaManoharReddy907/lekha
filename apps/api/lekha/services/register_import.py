@@ -55,9 +55,9 @@ async def import_register(db: AsyncSession, firm_id: uuid.UUID, client_id: uuid.
     book = await rulebook_for(db, firm_id)
     created, skipped, problems = 0, 0, []
     for n, r in enumerate(rows[header_idx + 1:], start=header_idx + 2):
-        def v(k: str) -> Any:
+        def v(k: str, row: list = r) -> Any:
             i = mapping.get(k)
-            return r[i] if i is not None and i < len(r) else None
+            return row[i] if i is not None and i < len(row) else None
 
         sg = G.normalise(str(v("supplier_gstin") or ""))
         if not sg:

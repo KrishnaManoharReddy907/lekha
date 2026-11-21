@@ -35,7 +35,7 @@ def _docs(invs, stmt):
 
 
 def test_parse_portal_json_shape():
-    _b, invs, doc, _l = _books_and_2b(1, 30)
+    _b, _invs, doc, _l = _books_and_2b(1, 30)
     stmt = gstr2b.parse_json(json.dumps(doc))
     assert stmt.period == "102025" and stmt.gstin and stmt.generated_on == date(2025, 11, 14)
     assert stmt.records and all(len(r.supplier_gstin) == 15 for r in stmt.records)

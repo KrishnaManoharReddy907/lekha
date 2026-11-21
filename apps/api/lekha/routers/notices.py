@@ -12,9 +12,9 @@ from lekha.core.audit import audit
 from lekha.core.deps import Ctx, get_ctx
 from lekha.core.errors import NotFound
 from lekha.core.storage import get_storage
+from lekha.jobs.queue import enqueue
 from lekha.models import ClientGstin, Notice, NoticePack
 from lekha.schemas.serialize import row, rows
-from lekha.jobs.queue import enqueue
 from lekha.services.notices import form_options
 
 router = APIRouter(prefix="/api", tags=["notices"])
