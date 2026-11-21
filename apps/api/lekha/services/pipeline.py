@@ -190,7 +190,8 @@ async def process_document(db: AsyncSession, document_id: uuid.UUID) -> dict[str
     memory = await _memory(db, guess_supplier)
 
     engine, model, raw, usage = "offline", None, offline, None
-    if ai_enabled():
+    # Demo documents use offline extraction so visitors never consume the AI quota.
+    if ai_enabled() and doc.source != "demo":
         try:
             raw, usage = await extract_with_claude(pages, _memory_hints(memory))
             engine, model = provider() or "ai", usage.model
