@@ -117,6 +117,8 @@ def normalise_number(number: str | None) -> str:
         return ""
     s = number.upper().strip()
     s = re.sub(r"(?<!\d)(20)?(\d{2})\s*[-/]\s*(20)?(\d{2})(?!\d)", _fy_or_keep, s)
+    # A financial year glued to the serial when separators are dropped: 'INV25-260042' → 'INV 0042'.
+    s = re.sub(r"(?<!\d)(20)?(\d{2})[-/](20)?(\d{2})(?=\d{2,})", _fy_or_keep, s)
     tokens = [t for t in re.split(r"[^0-9A-Z]+", s) if t]
     out = []
     for t in tokens:
