@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.storage/
+bench-data/
+node_modules/
+.next/
+coverage/
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+.mypy_cache/
+playwright-report/
+test-results/
