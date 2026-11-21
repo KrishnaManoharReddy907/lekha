@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     s3_access_key: str | None = Field(None, alias="S3_ACCESS_KEY")
     s3_secret_key: str | None = Field(None, alias="S3_SECRET_KEY")
 
+    ai_provider: str = Field("auto", alias="LEKHA_AI_PROVIDER")  # auto | gemini | claude
+    gemini_api_key: str | None = Field(None, alias="GEMINI_API_KEY")
+    # Tried in order; on quota/rate errors the next model is used, then offline extraction.
+    gemini_models: str = Field("gemini-flash-latest,gemini-3.5-flash,gemini-flash-lite-latest", alias="LEKHA_GEMINI_MODELS")
     anthropic_api_key: str | None = Field(None, alias="ANTHROPIC_API_KEY")
     ai_model: str = Field("claude-opus-5-5", alias="LEKHA_AI_MODEL")
     ai_effort: str = Field("medium", alias="LEKHA_AI_EFFORT")
@@ -37,7 +41,7 @@ class Settings(BaseSettings):
     ai_offline: bool = Field(False, alias="LEKHA_AI_OFFLINE")
 
     run_worker_in_api: bool = Field(True, alias="LEKHA_WORKER_IN_API")
-    worker_concurrency: int = Field(2, alias="LEKHA_WORKER_CONCURRENCY")
+    worker_concurrency: int = Field(3, alias="LEKHA_WORKER_CONCURRENCY")
     max_upload_mb: int = Field(20, alias="LEKHA_MAX_UPLOAD_MB")
     session_days: int = Field(14, alias="LEKHA_SESSION_DAYS")
     auto_approve_confidence: float = Field(0.97, alias="LEKHA_AUTO_APPROVE")

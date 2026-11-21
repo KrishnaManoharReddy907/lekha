@@ -10,6 +10,7 @@ the IRP public key is configured (LEKHA_IRP_PUBLIC_KEY); otherwise the payload i
 from __future__ import annotations
 
 import base64
+import re
 import json
 import os
 from dataclasses import dataclass
@@ -105,6 +106,73 @@ def compare(inv: InvoiceData, qr: dict[str, Any]) -> dict[str, Any]:
     status = "verified" if checks and all(c["ok"] for c in checks.values()) else "mismatch" if checks else "none"
     return {"status": status, "checks": checks, "irn": qr.get("Irn"), "irn_date": qr.get("IrnDt"),
             "main_hsn": qr.get("MainHsnCode"), "item_count": qr.get("ItemCnt")}
+
+
+def reconcile_with_qr(fields: dict[str, Any], qr: dict[str, Any], page_text: str
+                      ) -> tuple[dict[str, Any], dict[str, str], list[dict[str, Any]]]:
+    """Use the signed QR to fill gaps and fix misreads in extracted fields.
+
+    A disagreement is treated as a *misread* (and corrected) when the QR's value is printed on the
+    page, when the extracted value is provably invalid (bad GSTIN checksum), or when the two values
+    are near-identical (one or two characters apart). Otherwise it is a *genuine* mismatch — the
+    printed invoice differs from what was registered — and it is left for the QR_MISMATCH check.
+    Returns (fields, sources, corrections).
+    """
+    from rapidfuzz.distance import Levenshtein
+
+    from lekha.engines.gstin import is_valid as gstin_valid
+
+    out = dict(fields)
+    sources: dict[str, str] = {}
+    corrections: list[dict[str, Any]] = []
+    qd = parse_date(qr.get("DocDt")) if qr.get("DocDt") else None
+    want = {
+        "supplier_gstin": normalise(qr.get("SellerGstin")) or None,
+        "buyer_gstin": normalise(qr.get("BuyerGstin")) or None,
+        "number": str(qr["DocNo"]).strip() if qr.get("DocNo") else None,
+        "date": qd.isoformat() if qd else None,
+        "total": f"{d(qr['TotInvVal']):.2f}" if qr.get("TotInvVal") not in (None, "") else None,
+        "irn": str(qr["Irn"]).strip().lower() if qr.get("Irn") else None,
+    }
+    page_compact = "".join(ch for ch in page_text.upper() if ch.isalnum())
+    page_numbers = {n.replace(",", "") for n in re.findall(r"\d[\d,]*\.?\d*", page_text)}
+
+    for field, qv in want.items():
+        if not qv:
+            continue
+        cur = out.get(field)
+        if cur in (None, ""):
+            out[field] = qv
+            sources[field] = "qr"
+            continue
+        if field in ("supplier_gstin", "buyer_gstin"):
+            same = normalise(cur) == qv
+        elif field == "number":
+            same = normalise_number(str(cur)) == normalise_number(qv)
+        elif field == "total":
+            same = abs(d(cur) - d(qv)) <= d("1")
+        elif field == "irn":
+            same = str(cur).strip().lower() == qv
+        else:
+            same = str(cur) == qv
+        if same:
+            continue
+        a = "".join(ch for ch in str(cur).upper() if ch.isalnum())
+        b = "".join(ch for ch in qv.upper() if ch.isalnum())
+        printed = (b and b in page_compact) if field != "total" else (
+            qv.rstrip("0").rstrip(".") in {n.rstrip("0").rstrip(".") for n in page_numbers if n})
+        provably_wrong = field.endswith("gstin") and not gstin_valid(str(cur)) and gstin_valid(qv)
+        # A misread changes a few characters; a forged value differs almost entirely. Up to a third of the
+        # characters may differ for GSTIN/IRN (long, structured), a quarter for invoice numbers.
+        limit = max(2, len(b) // 3) if field != "number" else max(1, len(b) // 4)
+        near = field in ("supplier_gstin", "buyer_gstin", "number", "irn") and Levenshtein.distance(a, b) <= limit
+        if printed or provably_wrong or near:
+            out[field] = qv
+            sources[field] = "qr"
+            corrections.append({"field": field, "read": str(cur), "qr": qv,
+                                "why": "printed on page" if printed else "invalid checksum" if provably_wrong
+                                else "near-identical misread"})
+    return out, sources, corrections
 
 
 def make_einvoice_qr_text(data: dict[str, Any]) -> str:

@@ -11,7 +11,7 @@ import structlog
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lekha.ai.client import AIRefused, AIUnavailable, ai_enabled
+from lekha.ai.client import AIRefused, AIUnavailable, ai_enabled, provider
 from lekha.ai.extract import PROMPT_VERSION, extract_with_claude
 from lekha.ai.offline import extract_offline
 from lekha.core.audit import audit
@@ -193,7 +193,7 @@ async def process_document(db: AsyncSession, document_id: uuid.UUID) -> dict[str
     if ai_enabled():
         try:
             raw, usage = await extract_with_claude(pages, _memory_hints(memory))
-            engine, model = "claude", usage.model
+            engine, model = provider() or "ai", usage.model
         except (AIUnavailable, AIRefused) as exc:
             log.warning("extract.ai_unavailable", error=str(exc))
             raw = {**offline, "notes": f"AI extraction unavailable ({exc}); used offline rules."}
@@ -206,23 +206,11 @@ async def process_document(db: AsyncSession, document_id: uuid.UUID) -> dict[str
 
     inv_dict = _extracted_to_invoice_dict(raw)
     sources: dict[str, str] = {}
-    # The signed e-invoice QR is authoritative for the fields it carries: fill anything extraction missed.
+    # The signed e-invoice QR is authoritative: fill gaps and correct misreads (but keep genuine mismatches).
+    qr_corrections: list[dict[str, Any]] = []
     if einv and einv.payload:
-        from lekha.engines.dates import parse_date as _pd
-
-        qp = einv.payload
-        gap_fill = {
-            "supplier_gstin": G.normalise(qp.get("SellerGstin")) or None,
-            "buyer_gstin": G.normalise(qp.get("BuyerGstin")) or None,
-            "number": qp.get("DocNo"),
-            "date": (_pd(qp.get("DocDt")) or None) and _pd(qp.get("DocDt")).isoformat(),
-            "total": _num(qp.get("TotInvVal")),
-            "irn": qp.get("Irn"),
-        }
-        for k, v in gap_fill.items():
-            if v and not inv_dict.get(k):
-                inv_dict[k] = v
-                sources[k] = "qr"
+        inv_dict, qr_sources, qr_corrections = Q.reconcile_with_qr(inv_dict, einv.payload, P.full_text(pages))
+        sources.update(qr_sources)
     # Supplier memory: re-apply corrections humans made before for this supplier.
     supplier_mem = await _memory(db, inv_dict.get("supplier_gstin")) if inv_dict.get("supplier_gstin") != guess_supplier \
         else memory
@@ -242,9 +230,15 @@ async def process_document(db: AsyncSession, document_id: uuid.UUID) -> dict[str
     known = set((await db.execute(select(Supplier.gstin))).scalars())
     findings = validate_invoice(inv, book, ValidationContext(client_gstins=client_gstins, known_suppliers=known,
                                                              today=date.today()))
-    if qr_cmp and qr_cmp["status"] == "mismatch":
-        from lekha.engines.validation import Finding
+    from lekha.engines.validation import Finding
 
+    if qr_corrections:
+        findings.append(Finding(
+            "QR_CORRECTED", "info",
+            "Corrected from the signed e-invoice QR: " + "; ".join(
+                f"{c['field']} read as '{c['read']}' → '{c['qr']}'" for c in qr_corrections), qr_corrections[0]["field"],
+            data={"corrections": qr_corrections}))
+    if qr_cmp and qr_cmp["status"] == "mismatch":
         bad = [k for k, v in qr_cmp["checks"].items() if not v["ok"]]
         findings.append(Finding("QR_MISMATCH", ERROR,
                                 "The signed e-invoice QR code disagrees with the printed invoice on: "
@@ -292,8 +286,7 @@ async def process_document(db: AsyncSession, document_id: uuid.UUID) -> dict[str
         bbox = _union([t["box"] for t in toks]) if toks else None
         page = (ids[0] // 10000) + 1 if ids else None
         evidence.append(FieldEvidence(firm_id=doc.firm_id, field=name, value=value, confidence=round(sc, 4),
-                                      page=page, token_ids=ids, bbox=bbox, source=sources.get(name, engine if engine !=
-                                                                                                  "claude" else "model"),
+                                      page=page, token_ids=ids, bbox=bbox, source=sources.get(name, "offline" if engine == "offline" else "model"),
                                       signals=sig.vector()))
     conf = C.invoice_confidence(scores)
 
@@ -327,7 +320,7 @@ async def process_document(db: AsyncSession, document_id: uuid.UUID) -> dict[str
     await _replace_children(db, invoice, inv, evidence, findings, book)
 
     auto = (conf >= get_settings().auto_approve_confidence and not any(f.severity == ERROR for f in findings)
-            and engine == "claude")
+            and engine != "offline")
     if auto:
         invoice.status = "approved"
         invoice.approved_at = datetime.now(UTC)

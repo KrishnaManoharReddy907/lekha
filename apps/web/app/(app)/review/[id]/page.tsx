@@ -363,8 +363,8 @@ export default function ReviewWorkstation() {
             {d.extraction && (
               <p className="flex items-center gap-1.5">
                 <Sparkles className="size-3.5" />
-                Read by {d.extraction.engine === "claude" ? `AI (${d.extraction.model})` : "offline rules"}
-                {d.extraction.engine === "claude" && ` · ${(d.extraction.latency_ms / 1000).toFixed(1)}s · $${d.extraction.cost_usd.toFixed(3)}`}
+                Read by {d.extraction.engine !== "offline" ? `AI (${d.extraction.model})` : "offline rules"}
+                {d.extraction.engine !== "offline" && ` · ${(d.extraction.latency_ms / 1000).toFixed(1)}s${d.extraction.cost_usd ? ` · $${d.extraction.cost_usd.toFixed(3)}` : " · free tier"}`}
               </p>
             )}
             {d.extraction?.notes && <p className="mt-1">Note: {d.extraction.notes}</p>}

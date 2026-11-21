@@ -42,9 +42,22 @@ class AIResult:
     request_id: str | None
 
 
-def ai_enabled() -> bool:
+def provider() -> str | None:
+    """Which AI provider to use: explicit LEKHA_AI_PROVIDER, else the first key present (Gemini is free)."""
     s = get_settings()
-    return bool(s.anthropic_api_key) and not s.ai_offline
+    if s.ai_offline:
+        return None
+    if s.ai_provider in ("gemini", "claude"):
+        return s.ai_provider if (s.gemini_api_key if s.ai_provider == "gemini" else s.anthropic_api_key) else None
+    if s.gemini_api_key:
+        return "gemini"
+    if s.anthropic_api_key:
+        return "claude"
+    return None
+
+
+def ai_enabled() -> bool:
+    return provider() is not None
 
 
 @lru_cache(maxsize=1)
@@ -69,9 +82,28 @@ async def complete(
     effort: str | None = None,
     model: str | None = None,
 ) -> AIResult:
-    """One Claude call. With `schema`, the response is guaranteed-valid JSON (structured outputs)."""
-    if not ai_enabled():
-        raise AIUnavailable("AI is not configured (set ANTHROPIC_API_KEY)")
+    """One AI call. With `schema`, the response is guaranteed-valid JSON. Content uses Claude-style blocks
+    ({"type": "image", "source": {...}} / {"type": "text", "text": ...}); providers translate as needed."""
+    p = provider()
+    if p is None:
+        raise AIUnavailable("AI is not configured (set GEMINI_API_KEY or ANTHROPIC_API_KEY)")
+    if p == "gemini":
+        from lekha.ai.gemini import complete_gemini
+
+        return await complete_gemini(system=system, content=content, schema=schema, max_tokens=max_tokens)
+    return await _complete_claude(system=system, content=content, schema=schema, max_tokens=max_tokens,
+                                  effort=effort, model=model)
+
+
+async def _complete_claude(
+    *,
+    system: str,
+    content: list[dict[str, Any]] | str,
+    schema: dict[str, Any] | None,
+    max_tokens: int,
+    effort: str | None,
+    model: str | None,
+) -> AIResult:
     s = get_settings()
     model = model or s.ai_model
     output_config: dict[str, Any] = {"effort": effort or s.ai_effort}
