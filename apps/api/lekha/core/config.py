@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     worker_concurrency: int = Field(3, alias="LEKHA_WORKER_CONCURRENCY")
     # Separate processes for OCR so it never blocks web requests (0 = inline thread, used in tests).
     ocr_processes: int = Field(2, alias="LEKHA_OCR_PROCESSES")
+    # Demo workspace size (1.0 = ~20 invoices per client per month). Smaller on tiny hosts.
+    demo_scale: float = Field(1.0, alias="LEKHA_DEMO_SCALE")
     max_upload_mb: int = Field(20, alias="LEKHA_MAX_UPLOAD_MB")
     session_days: int = Field(14, alias="LEKHA_SESSION_DAYS")
     auto_approve_confidence: float = Field(0.97, alias="LEKHA_AUTO_APPROVE")

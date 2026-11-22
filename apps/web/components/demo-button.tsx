@@ -40,7 +40,7 @@ export function DemoButton() {
       const me = await api<Me>("/api/demo/start", { method: "POST" });
       accept(me);
       const started = Date.now();
-      while (Date.now() - started < 240_000) {
+      while (Date.now() - started < 480_000) {
         await new Promise((r) => setTimeout(r, 2000));
         const s = await api<{ status: string }>("/api/demo/status");
         if (s.status === "ready") {

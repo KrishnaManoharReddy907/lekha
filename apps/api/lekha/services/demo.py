@@ -74,6 +74,9 @@ async def populate_demo(db: AsyncSession, user: User, firm: Firm, *, seed: int |
                         today: date | None = None, with_documents: bool = True) -> None:
     today = today or date.today()
     rng = random.Random(seed if seed is not None else random.randint(1, 10**9))
+    from lekha.core.config import get_settings
+
+    scale = max(0.2, min(1.0, get_settings().demo_scale))
     await set_tenant(db, firm.id)
     fid = firm.id
 
@@ -147,7 +150,7 @@ async def populate_demo(db: AsyncSession, user: User, firm: Firm, *, seed: int |
         # Most purchases are local (CGST+SGST); some come from other states (IGST).
         my_suppliers = local_pool[party["gstin"]] * 2 + rng.sample(pool, 9)
         for m in months:
-            for _ in range(rng.randint(14, 22)):
+            for _ in range(max(4, round(rng.randint(14, 22) * scale))):
                 sp = rng.choice(my_suppliers)
                 add_invoice(client, party, sp, m + timedelta(days=rng.randint(0, 27)))
     # Shell supplier: three big, round, recent invoices to different clients.
@@ -293,7 +296,9 @@ async def _demo_documents(db: AsyncSession, fid: uuid.UUID, client: Client, part
                           rng: random.Random, today: date, user_id: uuid.UUID) -> None:
     from lekha.services.pipeline import ingest_document
 
-    for k in range(4):
+    from lekha.core.config import get_settings
+
+    for k in range(max(2, round(4 * get_settings().demo_scale))):
         sp = rng.choice(pool)
         inv = make_invoice(rng, party | {"name": client.name}, on=today - timedelta(days=rng.randint(1, 12)),
                            supplier=sp["party"], einvoice=k % 2 == 0, template=k % 4)

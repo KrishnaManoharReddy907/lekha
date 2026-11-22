@@ -39,3 +39,5 @@ services:
         value: "1"
       - key: LEKHA_OCR_PROCESSES
         value: "1"
+      - key: LEKHA_DEMO_SCALE # half-size demo workspaces on the small free instance
+        value: "0.5"
