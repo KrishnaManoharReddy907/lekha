@@ -15,7 +15,8 @@ Browser ── Next.js (Vercel) ── /api/* proxy ──► FastAPI (Render)
 - **One origin for the browser.** The web app proxies `/api/*` to the API, so the session cookie is first-party and there is no CORS surface.
 - **One Python codebase** for API and worker: OCR, imaging, matching, statistics and graph code are Python-native.
 - **Postgres as the queue.** Jobs are rows claimed with `FOR UPDATE SKIP LOCKED`, enqueued in the same transaction as the change that caused them, retried with backoff, then marked dead with an `on_dead` hook. No Redis to run.
-- **OCR in a process pool.** OCR holds the GIL; running it in threads starved the event loop and slowed every request. A small `ProcessPoolExecutor` keeps the API responsive.
+- **OCR placement is a setting.** By default OCR runs in a small `ProcessPoolExecutor` so CPU-heavy work never slows web requests (a broken pool is replaced automatically). On the 512 MB free host (`LEKHA_OCR_PROCESSES=0`) it runs in a thread inside the web process instead: a second process would duplicate ~110 MB of libraries, and ONNX Runtime releases the GIL during inference so requests are still served. The text detector's input is capped (`LEKHA_OCR_DET_MAX_SIDE`), which cuts its peak memory from ~390 MB to ~150–205 MB with no loss of accuracy.
+- **Lean runtime.** The API never imports SciPy (its own exact assignment solver and DCT, cross-checked against SciPy in tests) or the Anthropic SDK unless Claude is the configured provider; the worker returns freed memory to the OS after every job.
 - **Long work never blocks a request.** Demo creation, notice packs, reconciliation runs and the monthly close are background jobs; pages poll for status. This survives proxy and hosting timeouts.
 
 ## Layers (apps/api/lekha)
