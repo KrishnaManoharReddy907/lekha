@@ -54,3 +54,24 @@ def test_gemini_parts_and_schema():
     s = _strip_unsupported({"type": "object", "additionalProperties": False, "properties": {
         "a": {"type": "object", "additionalProperties": False}}})
     assert "additionalProperties" not in s and "additionalProperties" not in s["properties"]["a"]
+
+
+def test_offline_reader_skips_tax_rates_when_reading_amounts():
+    from PIL import Image
+
+    from lekha.ai.offline import extract_offline
+    from lekha.ocr.pages import Page, Token
+
+    def tok(i, text, x0, y0, x1, y1):
+        return Token(i, text, (x0, y0, x1, y1))
+
+    page = Page(Image.new("RGB", (10, 10)), [
+        tok(0, "Taxable Value", 0.60, 0.50, 0.70, 0.51), tok(1, "8,883.00", 0.85, 0.50, 0.92, 0.51),
+        tok(2, "IGST @ 5%", 0.60, 0.52, 0.68, 0.53), tok(3, "444.15", 0.86, 0.52, 0.92, 0.53),
+        tok(4, "CGST @", 0.60, 0.54, 0.65, 0.55), tok(5, "9%", 0.66, 0.54, 0.68, 0.55), tok(6, "12.60", 0.87, 0.54, 0.92, 0.55),
+        tok(7, "Invoice Total (Rs.)", 0.60, 0.58, 0.72, 0.59), tok(8, "9,327.00", 0.85, 0.58, 0.92, 0.59),
+    ], source="ocr")
+    f = extract_offline([page])["fields"]
+    assert f["igst"]["value"] == "444.15"
+    assert f["cgst"]["value"] == "12.60"
+    assert f["taxable_value"]["value"] == "8883.00" and f["total"]["value"] == "9327.00"

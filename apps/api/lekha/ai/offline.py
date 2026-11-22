@@ -52,7 +52,23 @@ def _after_label(text: str, pattern: str) -> str | None:
     return m.group(1).strip() if m and m.group(1).strip() else None
 
 
+class _Money:
+    """AMOUNT_RE that skips tax *rates*: in "IGST @ 5%  444.15" the amount is 444.15, not 5."""
+
+    @staticmethod
+    def search(text: str) -> re.Match[str] | None:
+        for m in AMOUNT_RE.finditer(text):
+            after = text[m.end():].lstrip()
+            before = text[:m.start()].rstrip()
+            if after.startswith("%") or before.endswith("@"):
+                continue
+            return m
+        return None
+
+
 def _find(tokens: list[Token], key: str, value_re: re.Pattern[str], last: bool = False) -> tuple[str | None, list[Token]]:
+    if value_re is AMOUNT_RE:
+        value_re = _Money  # type: ignore[assignment]
     pattern = LABELS[key]
     hits = [t for t in tokens if re.search(pattern, t.text, re.I)]
     if last:

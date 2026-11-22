@@ -14,6 +14,8 @@ Share of key fields exactly right (GSTINs, invoice number, date, place of supply
 | AI (raw model output) | 46 | **98.6%** | 100.0% | 98.5% | 97.2% | 84.8% |
 | AI + signed-QR reconciliation (stored by Lekha) | 46 | **100.0%** | 100.0% | 100.0% | 100.0% | 100.0% |
 
+> **Update, 2026-11-22 (later run):** after the offline reader learned to skip tax *rates* when reading amounts ("IGST @ 5%  444.15" → 444.15) and the OCR detector cap was introduced, the offline row re-measures at **92.1%** of fields (digital PDF 100%, clean scan 90.9%, phone photo 83.0%; 56.7% of documents fully correct; IGST 60% → 86.7%). The AI rows above are from the earlier full run; the re-run could not score them because the free Gemini daily quota was exhausted.
+
 ### Per field (best reader)
 
 | Field | Accuracy |
