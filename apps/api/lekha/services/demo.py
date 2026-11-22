@@ -294,9 +294,8 @@ async def populate_demo(db: AsyncSession, user: User, firm: Firm, *, seed: int |
 
 async def _demo_documents(db: AsyncSession, fid: uuid.UUID, client: Client, party: dict, pool: list[dict[str, Any]],
                           rng: random.Random, today: date, user_id: uuid.UUID) -> None:
-    from lekha.services.pipeline import ingest_document
-
     from lekha.core.config import get_settings
+    from lekha.services.pipeline import ingest_document
 
     for k in range(max(2, round(4 * get_settings().demo_scale))):
         sp = rng.choice(pool)

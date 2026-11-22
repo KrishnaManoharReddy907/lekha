@@ -15,7 +15,7 @@ function watchErrors(page: Page) {
 }
 
 async function settle(page: Page) {
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("networkidle", { timeout: 120_000 });
   await expect(page.locator(".animate-spin").first()).toBeHidden({ timeout: 30_000 }).catch(() => undefined);
 }
 
@@ -25,7 +25,7 @@ test("visitor demo: every screen renders without errors", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /From invoice photo to protected tax credit/ })).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/00-landing.png`, fullPage: true });
   await page.getByRole("button", { name: /Try the live demo/ }).click();
-  await page.waitForURL("**/dashboard", { timeout: 180_000 });
+  await page.waitForURL("**/dashboard", { timeout: process.env.E2E_BASE_URL ? 600_000 : 180_000 });
   await settle(page);
   await expect(page.getByText("Firm overview")).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/01-dashboard.png`, fullPage: true });

@@ -2,8 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 240_000,
-  expect: { timeout: 20_000 },
+  // The live free-tier server is far slower than a laptop; allow more time when testing a deployment.
+  timeout: process.env.E2E_BASE_URL ? 1_200_000 : 240_000,
+  expect: { timeout: process.env.E2E_BASE_URL ? 60_000 : 20_000 },
   fullyParallel: false,
   retries: 0,
   reporter: [["list"]],
