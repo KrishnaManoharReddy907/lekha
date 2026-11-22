@@ -50,6 +50,7 @@ class LocalStorage:
 class S3Storage:
     def __init__(self) -> None:
         import boto3
+        from botocore.config import Config
 
         s = get_settings()
         self.bucket = s.s3_bucket
@@ -59,6 +60,8 @@ class S3Storage:
             region_name=s.s3_region,
             aws_access_key_id=s.s3_access_key,
             aws_secret_access_key=s.s3_secret_key,
+            # Path-style addressing works with every S3-compatible provider (Supabase, R2, MinIO) and AWS.
+            config=Config(s3={"addressing_style": "path"}, retries={"max_attempts": 3}),
         )
 
     async def put(self, key: str, data: bytes, content_type: str) -> None:

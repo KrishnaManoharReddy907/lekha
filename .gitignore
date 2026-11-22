@@ -17,3 +17,4 @@ sample-bills/
 e2e-shots/
 e2e-results/
 deploy.env
+apps/api/.deploy-database-url
