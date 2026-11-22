@@ -71,7 +71,7 @@ async def test_demo_leaves_no_duplicate_reconciliations_and_interactive_jobs_go_
         await db.execute(delete(Job).where(Job.status == "queued"))
         await enqueue(db, "graph.analyse", {}, firm_id=firm.id)
         await enqueue(db, "notice.pack", {"notice_id": "00000000-0000-0000-0000-000000000000"}, firm_id=firm.id)
-    first = await claim_one()
+    first = await claim_one(include_delayed=True)  # ordering, not due-time (Python vs DB clock skew)
     assert first is not None and first.kind == "notice.pack"
     async with system_session() as db:
         await db.execute(delete(Job).where(Job.firm_id == firm.id, Job.kind.in_(["graph.analyse", "notice.pack"])))
