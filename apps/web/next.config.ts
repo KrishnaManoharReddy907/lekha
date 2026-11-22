@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-const API_URL = process.env.LEKHA_API_URL ?? "http://localhost:8000";
+// Trim whitespace/newlines and a trailing slash: env values pasted through CLIs often carry them,
+// and an invalid rewrite destination fails the whole build.
+const API_URL = (process.env.LEKHA_API_URL ?? "http://localhost:8000").trim().replace(/\/+$/, "");
 
 const config: NextConfig = {
   // The browser only ever talks to this origin; /api is forwarded to the Python service.
