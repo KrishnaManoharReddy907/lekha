@@ -51,3 +51,27 @@ async def test_demo_endpoint_logs_visitor_in():
         await run_until_empty()
         assert (await c.get("/api/demo/status")).json()["status"] == "ready"
         assert len((await c.get("/api/clients")).json()) == 3
+
+
+async def test_demo_leaves_no_duplicate_reconciliations_and_interactive_jobs_go_first():
+    from sqlalchemy import delete
+
+    from lekha.jobs.queue import claim_one, enqueue
+    from lekha.models import Job
+
+    async with system_session() as db:
+        _user, firm = await create_demo(db, seed=11, today=date(2026, 11, 21))
+    async with system_session() as db:
+        recon = (await db.execute(select(func.count()).select_from(Job).where(
+            Job.firm_id == firm.id, Job.kind == "reconcile.run"))).scalar_one()
+    assert recon == 0  # the demo reconciles inline; a queued re-run per month would only delay the visitor
+    await run_until_empty()
+
+    async with system_session() as db:
+        await db.execute(delete(Job).where(Job.status == "queued"))
+        await enqueue(db, "graph.analyse", {}, firm_id=firm.id)
+        await enqueue(db, "notice.pack", {"notice_id": "00000000-0000-0000-0000-000000000000"}, firm_id=firm.id)
+    first = await claim_one()
+    assert first is not None and first.kind == "notice.pack"
+    async with system_session() as db:
+        await db.execute(delete(Job).where(Job.firm_id == firm.id, Job.kind.in_(["graph.analyse", "notice.pack"])))

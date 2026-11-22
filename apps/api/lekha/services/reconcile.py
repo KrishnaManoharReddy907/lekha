@@ -38,7 +38,7 @@ def _period_key(p: str) -> tuple[int, int]:
 
 async def import_gstr2b(db: AsyncSession, *, firm_id: uuid.UUID, client_id: uuid.UUID, filename: str, data: bytes,
                         period: str | None, gstin: str | None, user_id: uuid.UUID | None,
-                        auto_close: bool = True) -> Gstr2bImport:
+                        auto_close: bool = True, queue_reconcile: bool = True) -> Gstr2bImport:
     try:
         stmt = P.parse(filename, data)
     except P.Gstr2bError as e:
@@ -109,9 +109,10 @@ async def import_gstr2b(db: AsyncSession, *, firm_id: uuid.UUID, client_id: uuid
     await db.flush()
     await audit(db, firm_id, "gstr2b.imported", "gstr2b_import", imp.id, actor_id=user_id, period=period,
                 gstin=client_gstin, records=len(stmt.records), replaced=len(old))
-    await enqueue(db, "reconcile.run", {"client_id": str(client_id), "period": period,
-                                        "actor_id": str(user_id) if user_id else None}, firm_id=firm_id,
-                  dedupe_key=f"recon:{client_id}:{period}")
+    if queue_reconcile:  # callers that reconcile inline right away (the demo builder) skip the duplicate job
+        await enqueue(db, "reconcile.run", {"client_id": str(client_id), "period": period,
+                                            "actor_id": str(user_id) if user_id else None}, firm_id=firm_id,
+                      dedupe_key=f"recon:{client_id}:{period}")
     if auto_close:
         # A new GSTR-2B starts the month's close automatically (each consequential step still needs approval).
         await enqueue(db, "close.auto", {"client_id": str(client_id), "period": period, "gstin": client_gstin},

@@ -67,6 +67,11 @@ async def enqueue(
     return job
 
 
+# Work a person is waiting for on screen runs before bulk background work (recomputations,
+# graph analysis). On a single slow worker this is the difference between seconds and minutes.
+INTERACTIVE_KINDS = ("demo.populate", "document.process", "notice.pack", "close.run", "close.auto", "rules.impact")
+
+
 async def claim_one(include_delayed: bool = False) -> Job | None:
     due = "" if include_delayed else "AND run_after <= now()"
     async with system_session() as db:
@@ -77,10 +82,11 @@ async def claim_one(include_delayed: bool = False) -> Job | None:
                     UPDATE jobs SET status='running', started_at=now(), attempts=attempts+1, updated_at=now()
                     WHERE id = (
                       SELECT id FROM jobs WHERE status='queued' {due}
-                      ORDER BY run_after FOR UPDATE SKIP LOCKED LIMIT 1
+                      ORDER BY (kind = ANY(:interactive)) DESC, run_after FOR UPDATE SKIP LOCKED LIMIT 1
                     ) RETURNING id
                     """
-                )
+                ),
+                {"interactive": list(INTERACTIVE_KINDS)},
             )
         ).first()
         if not row:

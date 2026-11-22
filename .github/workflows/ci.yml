@@ -52,3 +52,18 @@ jobs:
       - run: npx next build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+
+  deploy-api:
+    name: Deploy API to Render
+    # After both checks pass on main. Needs the RENDER_DEPLOY_HOOK repository secret (Render → service →
+    # Settings → Deploy Hook); without it this job does nothing. The website deploys via Vercel's Git integration.
+    needs: [api, web]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then echo "RENDER_DEPLOY_HOOK not set; skipping"; exit 0; fi
+          curl -fsS -X POST "$HOOK" > /dev/null && echo "Render deploy triggered"

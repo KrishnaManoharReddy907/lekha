@@ -250,7 +250,7 @@ async def populate_demo(db: AsyncSession, user: User, firm: Firm, *, seed: int |
                                         scenario_weights=[("clean", 1)], forced=forced)
             await import_gstr2b(db, firm_id=fid, client_id=client.id, filename=f"GSTR2B_{p}.json",
                                 data=json.dumps(doc).encode(), period=p, gstin=party["gstin"], user_id=user.id,
-                                auto_close=False)
+                                auto_close=False, queue_reconcile=False)
             await db.flush()
             await run_reconciliation(db, fid, client.id, p, user.id)
             await db.flush()
