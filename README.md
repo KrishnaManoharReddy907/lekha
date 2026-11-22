@@ -4,6 +4,8 @@
 
 Built for CA firms (many clients) and businesses (one GSTIN or several).
 
+**Live:** https://lekha-silk.vercel.app — click *Try the live demo* (no sign-up). The free API server sleeps when idle, so the first visit can take up to a minute to wake it. API: https://lekha-api.onrender.com/health
+
 ![Reconciliation with explanation and recovery forecast](apps/web/public/screens/reconciliation.png)
 
 ## What it does
