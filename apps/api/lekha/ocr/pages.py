@@ -166,11 +166,36 @@ def deskew(img: Image.Image) -> Image.Image:
     return img.rotate(angle, resample=Image.BICUBIC, expand=True, fillcolor=(255, 255, 255))
 
 
+def det_max_side() -> int:
+    """Longest side the text *detector* sees (0 = RapidOCR's own choice, up to 2000 px).
+
+    Detection activations dominate OCR memory (about 390 MB at 2000 px, 205 MB at 1280, 135 MB at
+    1024). Recognition still reads crops from the full-resolution page, so capping detection costs
+    little accuracy (see docs/BENCHMARK.md) while letting OCR run on a 512 MB host.
+    Read from the environment so the OCR worker process needs no settings import.
+    """
+    import os
+
+    try:
+        return max(0, int(os.environ.get("LEKHA_OCR_DET_MAX_SIDE", "1280")))
+    except ValueError:
+        return 1280
+
+
 @lru_cache(maxsize=1)
 def _ocr_engine():
     from rapidocr_onnxruntime import RapidOCR
 
-    return RapidOCR()
+    engine = RapidOCR(intra_op_num_threads=1, inter_op_num_threads=1)
+    limit = det_max_side()
+    if limit:
+        from rapidocr_onnxruntime.ch_ppocr_det.utils import DetPreProcess
+
+        det = engine.text_det
+        # RapidOCR's "max" mode ignores the configured side and picks 960/1500/2000 itself; pin it.
+        det.get_preprocess = lambda max_wh: DetPreProcess(min(limit, (max_wh + 31) // 32 * 32), "max",
+                                                          det.mean, det.std)
+    return engine
 
 
 def ocr_page(page: Page) -> None:
@@ -216,12 +241,25 @@ def full_text(pages: list[Page]) -> str:
     return "\n".join(t.text for p in pages for t in p.tokens)
 
 
+_DCT32 = 2.0 * np.cos(np.pi * np.outer(np.arange(32), 2 * np.arange(32) + 1) / 64)
+
+
+def phash(image: Image.Image):
+    """imagehash.phash (hash_size=8), bit for bit, with the 2-D DCT as two matrix products (no SciPy import)."""
+    import imagehash
+
+    pixels = np.asarray(image.convert("L").resize((32, 32), Image.Resampling.LANCZOS), dtype=float)
+    dct = np.round(_DCT32 @ pixels @ _DCT32.T, 6)  # drop float dust: a blank page has exact zeros
+    low = dct[:8, :8]
+    return imagehash.ImageHash(low > np.median(low))
+
+
 def page_hashes(page: Page) -> tuple[str, str]:
     """(perceptual hash of the page, layout hash that ignores the actual text)."""
     import cv2
     import imagehash
 
-    ph = str(imagehash.phash(page.image, hash_size=8))
+    ph = str(phash(page.image))
     gray = np.array(page.image.convert("L").resize((256, int(256 * page.image.height / page.image.width))))
     blur = cv2.GaussianBlur(gray, (31, 31), 0)
     bw = (blur < 200).astype(np.uint8) * 255

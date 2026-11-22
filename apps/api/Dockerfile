@@ -13,6 +13,7 @@ COPY . .
 RUN uv sync --frozen --no-dev
 # Warm the OCR models at build time so the first upload is not slow.
 RUN .venv/bin/python -c "from rapidocr_onnxruntime import RapidOCR; RapidOCR()"
-ENV PATH="/app/.venv/bin:$PATH" LEKHA_ENV=production
+# Two malloc arenas instead of one per thread: far less heap bloat from worker threads on a 512 MB host.
+ENV PATH="/app/.venv/bin:$PATH" LEKHA_ENV=production MALLOC_ARENA_MAX=2
 EXPOSE 8000
 CMD ["sh", "-c", "python -m lekha.cli migrate && uvicorn lekha.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]

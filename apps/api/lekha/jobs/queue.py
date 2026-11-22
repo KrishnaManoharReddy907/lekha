@@ -20,6 +20,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lekha.core.db import system_session, tenant_session
+from lekha.core.memory import release_memory
 from lekha.models import Job
 
 log = structlog.get_logger("jobs")
@@ -120,6 +121,8 @@ async def run_job(job: Job) -> None:
         log.warning("job.failed", kind=job.kind, id=str(job.id), attempt=job.attempts, dead=dead, error=str(exc))
         if dead:
             await _on_dead(job, str(exc))
+    finally:
+        release_memory()
 
 
 async def _on_dead(job: Job, error: str) -> None:

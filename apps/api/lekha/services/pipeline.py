@@ -402,7 +402,19 @@ async def _run_cpu(fn, *args):
 
     if get_settings().ocr_processes <= 0:  # tests / tiny hosts: run inline in a thread
         return await asyncio.to_thread(fn, *args)
-    return await asyncio.get_running_loop().run_in_executor(_pool(), fn, *args)
+    from concurrent.futures.process import BrokenProcessPool
+
+    global _POOL
+    try:
+        return await asyncio.get_running_loop().run_in_executor(_pool(), fn, *args)
+    except BrokenProcessPool:
+        # A worker died (e.g. killed for memory). The pool is unusable from now on, so replace it;
+        # the job queue's retry then runs this document on a fresh worker.
+        log.warning("ocr.pool_broken")
+        broken, _POOL = _POOL, None
+        if broken is not None:
+            broken.shutdown(wait=False, cancel_futures=True)
+        raise
 
 
 async def mark_failed(db: AsyncSession, document_id: uuid.UUID, error: str) -> None:

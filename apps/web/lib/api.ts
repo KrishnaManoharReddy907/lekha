@@ -51,8 +51,21 @@ function safeJson(t: string): unknown {
   try {
     return JSON.parse(t);
   } catch {
-    return { error: { code: "bad_response", message: t.slice(0, 200) } };
+    // A proxy/host error page (e.g. a 502 while the server restarts) is HTML, never show it raw.
+    const looksHtml = /^\s*</.test(t);
+    return {
+      error: {
+        code: "bad_response",
+        message: looksHtml ? "The server is busy or restarting. Please try again in a moment." : t.slice(0, 200),
+      },
+    };
   }
+}
+
+/** True for errors worth retrying: network failures, gateway errors and rate limits. */
+export function isTransient(e: unknown): boolean {
+  if (e instanceof ApiError) return e.status === 429 || e.status >= 502;
+  return e instanceof TypeError; // fetch network failure
 }
 
 export function errorMessage(e: unknown): string {

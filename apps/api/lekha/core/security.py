@@ -9,7 +9,9 @@ from argon2.exceptions import InvalidHashError, VerificationError
 
 from lekha.core.config import get_settings
 
-_ph = PasswordHasher()
+# OWASP's recommended Argon2id profile (19 MiB, 2 passes, 1 lane). The library default uses 64 MiB per
+# hash, which on a 512 MB host is enough for a sign-in during OCR to push the server out of memory.
+_ph = PasswordHasher(time_cost=2, memory_cost=19 * 1024, parallelism=1)
 
 
 def hash_password(password: str) -> str:
@@ -20,6 +22,14 @@ def verify_password(password: str, hashed: str) -> bool:
     try:
         return _ph.verify(hashed, password)
     except (VerificationError, InvalidHashError):
+        return False
+
+
+def needs_rehash(hashed: str) -> bool:
+    """True for hashes made with older parameters; they are upgraded at the next successful sign-in."""
+    try:
+        return _ph.check_needs_rehash(hashed)
+    except InvalidHashError:
         return False
 
 

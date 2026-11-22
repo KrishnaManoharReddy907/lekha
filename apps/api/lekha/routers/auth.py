@@ -13,7 +13,14 @@ from lekha.core.db import set_tenant
 from lekha.core.deps import SESSION_COOKIE, get_db, get_user_session
 from lekha.core.errors import AppError, Conflict, NotFound, Unauthorized
 from lekha.core.ratelimit import limiter
-from lekha.core.security import hash_password, hash_token, new_token, password_problems, verify_password
+from lekha.core.security import (
+    hash_password,
+    hash_token,
+    needs_rehash,
+    new_token,
+    password_problems,
+    verify_password,
+)
 from lekha.models import Firm, Invite, Membership, Session, User
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -103,6 +110,8 @@ async def login(request: Request, body: LoginIn, response: Response, db: AsyncSe
     user = (await db.execute(select(User).where(User.email == body.email.lower()))).scalar_one_or_none()
     if not user or not verify_password(body.password, user.password_hash):
         raise Unauthorized("Email or password is incorrect.")
+    if needs_rehash(user.password_hash):
+        user.password_hash = hash_password(body.password)
     m = (await db.execute(select(Membership).where(Membership.user_id == user.id)
                           .order_by(Membership.created_at))).scalars().first()
     sess = await _start_session(db, response, request, user, m.firm_id if m else None)

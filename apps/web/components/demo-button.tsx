@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, errorMessage } from "@/lib/api";
+import { api, errorMessage, isTransient } from "@/lib/api";
 import { useAcceptMe } from "@/lib/session";
 import type { Me } from "@/lib/types";
 import { Button } from "./ui";
@@ -37,12 +37,27 @@ export function DemoButton() {
     setError(null);
     setElapsed(0);
     try {
-      const me = await api<Me>("/api/demo/start", { method: "POST" });
+      // The free server may be waking up: retry the start a few times on gateway errors.
+      let me: Me | null = null;
+      for (let attempt = 0; !me; attempt++) {
+        try {
+          me = await api<Me>("/api/demo/start", { method: "POST" });
+        } catch (err) {
+          if (!isTransient(err) || attempt >= 5) throw err;
+          await new Promise((r) => setTimeout(r, 5000));
+        }
+      }
       accept(me);
       const started = Date.now();
       while (Date.now() - started < 480_000) {
         await new Promise((r) => setTimeout(r, 2000));
-        const s = await api<{ status: string }>("/api/demo/status");
+        let s: { status: string };
+        try {
+          s = await api<{ status: string }>("/api/demo/status");
+        } catch (err) {
+          if (isTransient(err)) continue; // a slow or restarting server: keep waiting
+          throw err;
+        }
         if (s.status === "ready") {
           router.replace("/dashboard");
           return;

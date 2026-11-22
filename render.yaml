@@ -37,7 +37,9 @@ services:
       # The free instance has 512 MB RAM and a fraction of a CPU: keep parallelism small.
       - key: LEKHA_WORKER_CONCURRENCY
         value: "1"
-      - key: LEKHA_OCR_PROCESSES
-        value: "1"
+      - key: LEKHA_OCR_PROCESSES # 0 = OCR inside the web process: a second process would duplicate ~110 MB of libraries
+        value: "0"
       - key: LEKHA_DEMO_SCALE # half-size demo workspaces on the small free instance
         value: "0.5"
+      - key: LEKHA_OCR_DET_MAX_SIDE # cap the OCR text detector's input (peak ~150 MB instead of ~390 MB at full size)
+        value: "1024"

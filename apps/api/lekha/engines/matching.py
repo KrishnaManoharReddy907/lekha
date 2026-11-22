@@ -26,8 +26,8 @@ from typing import Any
 import numpy as np
 from rapidfuzz import fuzz
 from rapidfuzz.distance import Levenshtein
-from scipy.optimize import linear_sum_assignment
 
+from lekha.engines.assignment import linear_sum_assignment
 from lekha.engines.invoice import core_number, normalise_number
 from lekha.engines.money import ZERO
 

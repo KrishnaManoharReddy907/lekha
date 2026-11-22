@@ -6,9 +6,7 @@ import json
 import time
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any
-
-import anthropic
+from typing import TYPE_CHECKING, Any
 
 from lekha.core.config import get_settings
 
@@ -19,6 +17,10 @@ PRICES = {
     "claude-haiku-5-5": (0.10, 0.50),
     "claude-fable-5-2": (8.0, 40.0),
 }
+if TYPE_CHECKING:
+    import anthropic
+
+# The Anthropic SDK costs ~60 MB of RAM to import, so it is loaded only when Claude is actually used.
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 
@@ -62,6 +64,8 @@ def ai_enabled() -> bool:
 
 @lru_cache(maxsize=1)
 def _client() -> anthropic.AsyncAnthropic:
+    import anthropic
+
     s = get_settings()
     if not s.anthropic_api_key:
         raise AIUnavailable("ANTHROPIC_API_KEY is not set")
@@ -117,6 +121,8 @@ async def _complete_claude(
         "messages": [{"role": "user", "content": content}],
         "output_config": output_config,
     }
+    import anthropic
+
     started = time.perf_counter()
     try:
         if s.ai_fallbacks and model in ("claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-2"):
